@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { db, auth } from './index';
-import { Button } from 'reactstrap';
+import {
+  Button,
+  FormGroup,
+  Input,
+  Label,
+  Modal,
+  ModalBody,
+  ModalFooter,
+} from 'reactstrap';
 
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 import './App.css';
 
 import Header from './containers/Header/Header';
 
-function AuthButton() {
+function AuthButton( {toggleModal, setModalData} ) {
   const navigate = useNavigate();
   const user = auth.currentUser;
 
@@ -29,6 +37,23 @@ function AuthButton() {
       }).catch(console.error);
   };
 
+  const toggleLogoutModal = () => {
+    setModalData({
+      body: 'Are you sure you want to logout?',
+      buttons: [
+        {
+          text: 'Yes',
+          onClick: () => {logout(); toggleModal();},
+        },
+        {
+          text: 'No',
+          onClick: toggleModal,
+        },
+      ],
+    });
+    toggleModal();
+  };
+
   return (
     user === null ? (
       <Button onClick={googleLogin}>
@@ -36,7 +61,7 @@ function AuthButton() {
       </Button>
     )
     : (
-      <Button onClick={logout}>
+      <Button onClick={(toggleModal && setModalData) ? toggleLogoutModal : logout}>
         Log out as {user.displayName}
       </Button>
     )
@@ -46,6 +71,9 @@ function AuthButton() {
 function App() {
   const [user, setUser] = useState(null);
   const [userData, __setUserData] = useState(null);
+  const [modal, setModal] = useState(false);
+  const [modalData, setModalData] = useState({});
+  const navigate = useNavigate();
 
   useEffect(() => {
     onAuthStateChanged(auth, user => {
@@ -70,22 +98,48 @@ function App() {
 
   const setUserData = nextData => {
     if(user === null) return;
-    setDoc(doc(db, 'anchors', user.uid), {
-      ...nextData,
-      timestamp: serverTimestamp(),
-    }, { merge: true });
+    setDoc(doc(db, 'anchors', user.uid), nextData, { merge: true });
   };
 
+  const toggleModal = () => setModal(modal => !modal);
 
   return (
     <>
-      <Header AuthButton={AuthButton} />
+      <Header AuthButton={AuthButton} toggleModal={toggleModal} setModalData={setModalData} />
       <Outlet context={{
         AuthButton,
         user,
         userData,
         setUserData,
+        toggleModal,
+        setModalData,
       }} />
+
+      <Modal
+        isOpen={modal}
+        toggle={toggleModal}
+      >
+        <ModalBody>
+          {modalData?.body}
+          {modalData?.inputs?.map((input, idx) => (
+            <FormGroup floating>
+              <Input type={input.type} onChange={input.onChange} key={idx} className='my-2' placeholder={input.label}>
+                {input.text}
+              </Input>
+              <Label>
+                {input.label}
+              </Label>
+            </FormGroup>
+          ))}
+        </ModalBody>
+        <ModalFooter>
+        {modalData?.buttons?.map((button, idx) => (
+          <Button onClick={button.onClick} key={idx}>
+            {button.text}
+          </Button>
+        ))}
+        </ModalFooter>
+      </Modal>
     </>
   );
 }
