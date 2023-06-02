@@ -1,5 +1,5 @@
 import './ProjectBrowserPage.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { deleteField } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { useOutletContext, useNavigate, Link } from 'react-router-dom';
@@ -65,14 +65,14 @@ export default function ProjectBrowserPage() {
       const timer = setTimeout(() => navigate('/'), 500);
       return () => clearTimeout(timer);
     }
-  }, [user]);
+  }, [user, navigate]);
 
   const projects = !userData ? null :
     Object.entries(userData).map(x => ({id: x[0], ...x[1]}));
 
   projects?.sort((a, b) => b.lastEditTime - a.lastEditTime);
 
-  const createNewProject = () => {
+  const createNewProject = useCallback(() => {
     const projectId = uuidv4();
     setUserData({
       [projectId]: {
@@ -87,7 +87,7 @@ export default function ProjectBrowserPage() {
       },
     });
     navigate(`/edit/${projectId}`);
-  };
+  }, [navigate, setUserData, newProjectName, newProjectDescription]);
 
   const deleteProject = projectId => {
     setUserData({
@@ -131,7 +131,7 @@ export default function ProjectBrowserPage() {
         },
       ],
     }));
-  }, [newProjectName, newProjectDescription]);
+  }, [createNewProject, newProjectName, newProjectDescription, toggleModal, setModalData]);
 
   const toggleCreateNewProjectModal = () => {
     setModalData({

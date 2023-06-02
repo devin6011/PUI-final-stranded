@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { db, auth } from './index';
 import {
@@ -73,7 +73,6 @@ function App() {
   const [userData, __setUserData] = useState(null);
   const [modal, setModal] = useState(false);
   const [modalData, setModalData] = useState({});
-  const navigate = useNavigate();
 
   useEffect(() => {
     onAuthStateChanged(auth, user => {
@@ -96,12 +95,12 @@ function App() {
     };
   }, [user]);
 
-  const setUserData = nextData => {
+  const setUserData = useCallback(nextData => {
     if(user === null) return;
     setDoc(doc(db, 'anchors', user.uid), nextData, { merge: true });
-  };
+  }, [user]);
 
-  const toggleModal = () => setModal(modal => !modal);
+  const toggleModal = useCallback(() => setModal(modal => !modal), []);
 
   return (
     <>

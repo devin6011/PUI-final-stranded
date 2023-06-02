@@ -12,7 +12,7 @@ export default function HomePage() {
     if(user !== null) {
       navigate('/browse');
     }
-  }, [user]);
+  }, [user, navigate]);
 
   return (
     <main className='d-flex flex-column align-items-center'>

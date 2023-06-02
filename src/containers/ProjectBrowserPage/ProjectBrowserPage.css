@@ -1,7 +1,7 @@
 .CreateProjectCard {
-  min-width: 300px;
+  min-width: 300px !important;
 }
 
 .ProjectCard {
-  min-width: 300px;
+  min-width: 300px !important;
 }
