@@ -30,17 +30,17 @@ function ProjectCard({ project, deleteProject, editProjectName, editProjectDescr
   return (
     <Card className='ProjectCard w-25'>
       <CardBody className='d-flex flex-column align-items-start text-break'>
-        <CardTitle tag='h3' contenteditable='true' onBlur={e => editProjectName(e.target.innerText)}>
+        <CardTitle tag='h3' contentEditable={true} suppressContentEditableWarning={true} onBlur={e => editProjectName(e.target.innerText)}>
           {project.projectName}
         </CardTitle>
         <CardSubtitle tag='h4' className='fs-6 text-muted'>
           {(new Date(project.lastEditTime)).toLocaleString('en-US', { hour12: false })}
         </CardSubtitle>
-        <CardText className='my-3' contenteditable='true' onBlur={e => editProjectDescription(e.target.innerText)}>
+        <CardText className='my-3' contentEditable={true} suppressContentEditableWarning={true} onBlur={e => editProjectDescription(e.target.innerText)}>
           {project.description}
         </CardText>
         <div className='d-flex justify-content-between mt-auto align-self-stretch'>
-          <Link to={`/edit/${project.uuid}`}>
+          <Link to={`/edit/${project.id}`}>
             <Button>
               Open
             </Button>
@@ -68,45 +68,46 @@ export default function ProjectBrowserPage() {
   }, [user]);
 
   const projects = !userData ? null :
-    Object.entries(userData).map(x => ({uuid: x[0], ...x[1]}));
+    Object.entries(userData).map(x => ({id: x[0], ...x[1]}));
 
   projects?.sort((a, b) => b.lastEditTime - a.lastEditTime);
 
   const createNewProject = () => {
     const projectId = uuidv4();
     setUserData({
-      ...userData,
       [projectId]: {
         projectName: newProjectName || 'Untitled',
         description: newProjectDescription,
         lastEditTime: Date.now(),
+        graph: {
+          nodes: [],
+          edges: [],
+        },
+        events: [],
       },
     });
     navigate(`/edit/${projectId}`);
   };
 
-  const deleteProject = uuid => {
+  const deleteProject = projectId => {
     setUserData({
-      ...userData,
-      [uuid]: deleteField(),
+      [projectId]: deleteField(),
     });
   };
 
-  const editProjectName = uuid => newName => {
+  const editProjectName = projectId => newName => {
     setUserData({
-      ...userData,
-      [uuid]: {
-        ...userData[uuid],
+      [projectId]: {
+        ...userData[projectId],
         projectName: newName || 'Untitled',
       },
     });
   };
 
-  const editProjectDescription = uuid => newDescription => {
+  const editProjectDescription = projectId => newDescription => {
     setUserData({
-      ...userData,
-      [uuid]: {
-        ...userData[uuid],
+      [projectId]: {
+        ...userData[projectId],
         description: newDescription,
       },
     });
@@ -164,7 +165,7 @@ export default function ProjectBrowserPage() {
     toggleModal();
   };
 
-  const toggleDeleteProjectModal = (uuid, name) => {
+  const toggleDeleteProjectModal = (projectId, name) => {
     setModalData({
       body: `Are you sure you want to delete "${name}"?`,
       buttons: [
@@ -172,7 +173,7 @@ export default function ProjectBrowserPage() {
           text: 'Delete',
           onClick: () => {
             toggleModal();
-            deleteProject(uuid);
+            deleteProject(projectId);
           },
         },
         {
@@ -190,7 +191,7 @@ export default function ProjectBrowserPage() {
       <section className='d-flex gap-3 flex-wrap'>
         <CreateProjectCard onClick={toggleCreateNewProjectModal} />
         {projects?.map(project => (
-          <ProjectCard project={project} deleteProject={() => toggleDeleteProjectModal(project.uuid, project.projectName)} editProjectName={editProjectName(project.uuid)} editProjectDescription={editProjectDescription(project.uuid)} key={project.uuid} />
+          <ProjectCard project={project} deleteProject={() => toggleDeleteProjectModal(project.id, project.projectName)} editProjectName={editProjectName(project.id)} editProjectDescription={editProjectDescription(project.id)} key={project.id} />
         ))}
       </section>
     </main>
