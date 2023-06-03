@@ -39,7 +39,7 @@ const infoString =
   - Delete selected node: press 'Delete' key or press the upper trash icon in the menu
 
   - Add edge: click on the (unselected) start node and hold on, move to the end node and then release
-  - Delete selected edge: same as deleting selected node
+  - Delete edge: same as deleting node. or "add" the edge again
   
   - Move canvas: drag the background
   - Zoom: scroll the page
@@ -147,6 +147,17 @@ export default function EditorPage() {
       setHistoryTime(historyTime + 1);
     }
   }, [nodes, events, entryNode, history, historyTime]);
+
+  // update nodes and edges simultaneously to prevent error
+  const updateGraph = useCallback((newNodes, newEdges, save=true) => {
+    setNodes(newNodes);
+    setEdges(newEdges);
+
+    if(save) {
+      setHistory(history.slice(0, historyTime + 1).concat([{ nodes: newNodes, edges: newEdges, events, entryNode }]));
+      setHistoryTime(historyTime + 1);
+    }
+  }, [events, entryNode, history, historyTime]);
 
   const updateEntryNode = useCallback((newEntryNode, save=true) => {
     setEntryNode(newEntryNode);
@@ -325,13 +336,35 @@ export default function EditorPage() {
   const pointerUpNode = idx => e => {
     if(drawingEdge) {
       if(drawingEdge.from !== idx) {
-        // createEdge
-        updateEdges(edges.concat([{
-          from: drawingEdge.from,
-          to: idx,
-          events: [],
-          visible: true,
-        }]));
+        // check if already exists
+        const edgeIdx = nodes[drawingEdge.from].adj.find(edgeIdx => edges[edgeIdx].visible && edges[edgeIdx].to === idx);
+        if(edgeIdx !== undefined) {
+          // removeEdge
+          updateEdges(Object.assign([], edges, {
+            [edgeIdx]: {
+              ...edges[edgeIdx],
+              visible: false,
+            }
+          }));
+        }
+        else {
+          // createEdge
+          const newEdgeIdx = edges.length;
+          updateGraph(
+            Object.assign([], nodes, {
+              [drawingEdge.from]: {
+                ...nodes[drawingEdge.from],
+                adj: nodes[drawingEdge.from].adj.concat([newEdgeIdx]),
+              }
+            }),
+            edges.concat([{
+              from: drawingEdge.from,
+              to: idx,
+              events: [],
+              visible: true,
+            }])
+          );
+        }
       }
     }
   };
@@ -351,6 +384,7 @@ export default function EditorPage() {
       x: applyAlign(posX / zoom + viewPos.x - radius),
       y: applyAlign(posY / zoom + viewPos.y - radius),
       visible: true,
+      adj: [],
     }]));
   };
 
@@ -397,7 +431,7 @@ export default function EditorPage() {
 
   const editNode = idx => e => {
     setModalData({
-      body: 'Edit state data:',
+      body: 'Edit state:',
       inputs: [
         {
           type: 'text',
@@ -429,7 +463,7 @@ export default function EditorPage() {
 
   const editEdge = idx => e => {
     setModalData({
-      body: 'Edit edge data:',
+      body: `Edit edge (${nodes[edges[idx].from].name} → ${nodes[edges[idx].to].name}):`,
       inputs: [
         {
           type: 'text',
@@ -503,27 +537,51 @@ export default function EditorPage() {
           {edges?.map((edge, idx) => {
             const dx = nodes[edge.to].x - nodes[edge.from].x;
             const dy = nodes[edge.to].y - nodes[edge.from].y;
+            const arrowAngle = Math.atan2(dy, dx);
+            // offset for rotation
+            const textOffsetX = (Math.abs(dx) + 2 * radius) / 2;
+            const textOffsetY = (Math.abs(dy) + 2 * radius) / 2;
+            // displacement from center
+            const textShiftX = fontSize * Math.sin(arrowAngle);
+            const textShiftY = -fontSize * Math.cos(arrowAngle);
             return (
-            <Arrow
+            <Group
               key={idx}
-              x={zoom * (nodes[edge.from].x + radius - viewPos.x)}
-              y={zoom * (nodes[edge.from].y + radius - viewPos.y)}
-              points={[
-                0,
-                0,
-                zoom * (dx - radius * Math.cos(Math.atan2(dy, dx))),
-                zoom * (dy - radius * Math.sin(Math.atan2(dy, dx))),
-              ]}
-              pointerLength={20 * zoom}
-              pointerWidth={20 * zoom}
-              fill='black'
-              stroke='black'
-              strokeWidth={2 * zoom}
+              visible={edge.visible && nodes[edge.from].visible && nodes[edge.to].visible}
               onPointerClick={selectEdge(idx)}
               onPointerDblClick={editEdge(idx)}
-              shadowBlur={selected?.type === 'edge' && idx === selected.idx ? 20 : 0}
-              visible={edge.visible && nodes[edge.from].visible && nodes[edge.to].visible}
-            />
+            >
+              <Arrow
+                x={zoom * (nodes[edge.from].x + radius - viewPos.x)}
+                y={zoom * (nodes[edge.from].y + radius - viewPos.y)}
+                points={[
+                  0,
+                  0,
+                  zoom * (dx - radius * Math.cos(arrowAngle)),
+                  zoom * (dy - radius * Math.sin(arrowAngle)),
+                ]}
+                pointerLength={20 * zoom}
+                pointerWidth={20 * zoom}
+                fill='black'
+                stroke='black'
+                strokeWidth={2 * zoom}
+                shadowBlur={selected?.type === 'edge' && idx === selected.idx ? 20 : 0}
+              />
+              <Text
+                x={zoom * (Math.min(nodes[edge.from].x, nodes[edge.to].x) + textOffsetX + textShiftX - viewPos.x)}
+                y={zoom * (Math.min(nodes[edge.from].y, nodes[edge.to].y) + textOffsetY + textShiftY - viewPos.y)}
+                width={zoom * (Math.abs(dx) + 2 * radius)}
+                height={zoom * (Math.abs(dy) + 2 * radius)}
+                align='center'
+                verticalAlign='middle'
+                text={edge.events.join(', ')}
+                fontSize={zoom * fontSize}
+                listening={false}
+                rotation={dx >= 0 ? arrowAngle / Math.PI * 180 : arrowAngle / Math.PI * 180 + 180}
+                offsetX={zoom * textOffsetX}
+                offsetY={zoom * textOffsetY}
+              />
+            </Group>
             );
           })}
           {nodes?.map((node, idx) => (
@@ -539,33 +597,31 @@ export default function EditorPage() {
           <Html>
             <Dropdown
               isOpen={menuOpen}
-              toggle={() => {}}
-              onPointerEnter={() => setMenuOpen(true)}
-              onPointerLeave={() => setMenuOpen(false)}
+              toggle={() => setMenuOpen(state => !state)}
               direction='up'
               style={{top: canvasHeight-100, left: canvasWidth-100}}
             >
               <DropdownToggle color='light'><FaBars /></DropdownToggle>
               <DropdownMenu style={{minWidth: 0}}>
-                <DropdownItem onClick={undo}>
+                <DropdownItem toggle={false} onClick={undo}>
                   <FaUndo />
                 </DropdownItem>
-                <DropdownItem onClick={redo}>
+                <DropdownItem toggle={false} onClick={redo}>
                   <FaRedo />
                 </DropdownItem>
-                <DropdownItem onClick={deleteSelected}>
+                <DropdownItem toggle={false} onClick={deleteSelected}>
                   <FaTrash />
                 </DropdownItem>
-                <DropdownItem onClick={saveData}>
+                <DropdownItem toggle={false} onClick={saveData}>
                   <FaSave />
                 </DropdownItem>
-                <DropdownItem onClick={clearData}>
+                <DropdownItem toggle={false} onClick={clearData}>
                   <MdDeleteSweep />
                 </DropdownItem>
-                <DropdownItem onClick={() => setAlignGrid(state => !state)}>
+                <DropdownItem toggle={false} onClick={() => setAlignGrid(state => !state)}>
                   {alignGrid ? <MdGridOn /> : <MdGridOff />}
                 </DropdownItem>
-                <DropdownItem onClick={toggleInfoModal}>
+                <DropdownItem toggle={false} onClick={toggleInfoModal}>
                   <FaInfo />
                 </DropdownItem>
               </DropdownMenu>
