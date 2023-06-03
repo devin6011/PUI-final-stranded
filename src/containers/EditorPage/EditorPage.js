@@ -776,11 +776,8 @@ export default function EditorPage() {
             <section className='position-absolute border-top border-2 bg-light' style={{top: canvasHeight - 220, width: canvasWidth, height: 220}}>
               <section className='d-flex align-items-center justify-content-between p-2' style={{height: '40px'}}>
                 <div>
-                  <Button color='light' size='sm' id='panelRun' onClick={() => setAutoRun(true)}>
-                    <MdPlayArrow />
-                  </Button>
-                  <Button color='light' size='sm' id='panelPause' onClick={() => setAutoRun(false)}>
-                    <MdPause />
+                  <Button color='light' size='sm' id='panelRun' onClick={() => setAutoRun(state => !state)}>
+                    {autoRun ? <MdPause /> : <MdPlayArrow />}
                   </Button>
                   <Button color='light' size='sm' id='panelUndo' onClick={undoEvent}>
                     <MdUndo />
@@ -822,10 +819,7 @@ export default function EditorPage() {
               ))}
               </section>
               <UncontrolledTooltip placement='top' target='panelRun'>
-                Run the events
-              </UncontrolledTooltip>
-              <UncontrolledTooltip placement='top' target='panelPause'>
-                Pause
+                {autoRun ? 'Run the events' : 'Pause'}
               </UncontrolledTooltip>
               <UncontrolledTooltip placement='top' target='panelUndo'>
                 Undo one event
