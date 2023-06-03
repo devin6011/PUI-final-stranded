@@ -15,7 +15,7 @@ import { FaPlus } from 'react-icons/fa';
 
 function CreateProjectCard({ onClick }) {
   return (
-    <Card className='CreateProjectCard w-25' role='button' onClick={onClick}>
+    <Card className='CreateProjectCard' role='button' onClick={onClick}>
       <CardBody className='d-flex align-items-center justify-content-center'>
         <CardTitle tag='h3' className='d-flex align-items-center gap-2'>
           <FaPlus />
@@ -28,7 +28,7 @@ function CreateProjectCard({ onClick }) {
 
 function ProjectCard({ project, deleteProject, editProjectName, editProjectDescription }) {
   return (
-    <Card className='ProjectCard w-25'>
+    <Card className='ProjectCard'>
       <CardBody className='d-flex flex-column align-items-start text-break'>
         <CardTitle tag='h3' contentEditable={true} suppressContentEditableWarning={true} onBlur={e => editProjectName(e.target.innerText)}>
           {project.projectName}
@@ -84,6 +84,7 @@ export default function ProjectBrowserPage() {
           edges: [],
         },
         events: [],
+        entryNode: null,
       },
     });
     navigate(`/edit/${projectId}`);
@@ -188,7 +189,7 @@ export default function ProjectBrowserPage() {
   return (
     <main className='p-5'>
       <h2 className='pb-4'>Browse your projects</h2>
-      <section className='d-flex gap-3 flex-wrap'>
+      <section className='ProjectBrowser d-grid gap-3'>
         <CreateProjectCard onClick={toggleCreateNewProjectModal} />
         {projects?.map(project => (
           <ProjectCard project={project} deleteProject={() => toggleDeleteProjectModal(project.id, project.projectName)} editProjectName={editProjectName(project.id)} editProjectDescription={editProjectDescription(project.id)} key={project.id} />

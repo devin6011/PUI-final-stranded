@@ -3,6 +3,8 @@ Stranded in PUI final project
 
 https://pui-final-stranded.web.app
 
+nodejs=16.20
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

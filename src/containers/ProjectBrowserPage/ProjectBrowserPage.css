@@ -1,7 +1,3 @@
-.CreateProjectCard {
-  min-width: 300px !important;
-}
-
-.ProjectCard {
-  min-width: 300px !important;
+.ProjectBrowser {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }

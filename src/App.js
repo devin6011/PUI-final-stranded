@@ -119,10 +119,10 @@ function App() {
         toggle={toggleModal}
       >
         <ModalBody>
-          {modalData?.body}
+          <pre style={{fontSize: '1em', fontFamily: 'system-ui', whiteSpace: 'pre-wrap'}}>{modalData?.body}</pre>
           {modalData?.inputs?.map((input, idx) => (
             <FormGroup floating>
-              <Input type={input.type} onChange={input.onChange} key={idx} className='my-2' placeholder={input.label}>
+              <Input type={input.type} onChange={input.onChange} key={idx} className='my-2' placeholder={input.label} value={input.value}>
                 {input.text}
               </Input>
               <Label>
