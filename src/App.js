@@ -10,6 +10,7 @@ import {
   ModalBody,
   ModalFooter,
 } from 'reactstrap';
+import { FaGoogle } from 'react-icons/fa';
 
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -56,8 +57,8 @@ function AuthButton( {toggleModal, setModalData} ) {
 
   return (
     user === null ? (
-      <Button onClick={googleLogin}>
-        Log in with Google
+      <Button onClick={googleLogin} className='d-flex align-items-center gap-1'>
+        Log in with Google <FaGoogle />
       </Button>
     )
     : (
@@ -121,8 +122,8 @@ function App() {
         <ModalBody>
           <pre style={{fontSize: '1em', fontFamily: 'system-ui', whiteSpace: 'pre-wrap'}}>{modalData?.body}</pre>
           {modalData?.inputs?.map((input, idx) => (
-            <FormGroup floating>
-              <Input type={input.type} onChange={input.onChange} key={idx} className='my-2' placeholder={input.label} value={input.value}>
+            <FormGroup floating key={idx}>
+              <Input type={input.type} onChange={input.onChange} className='my-2' placeholder={input.label} value={input.value}>
                 {input.text}
               </Input>
               <Label>

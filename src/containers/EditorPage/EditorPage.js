@@ -1,10 +1,13 @@
+import './EditorPage.css';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import {
+  Button,
   Dropdown,
   DropdownToggle,
   DropdownMenu,
   DropdownItem,
+  UncontrolledTooltip,
 } from 'reactstrap';
 import {
   Stage,
@@ -24,32 +27,39 @@ import {
   FaTrash,
   FaSave,
   FaInfo,
+  FaBroom,
 } from 'react-icons/fa';
 import {
   MdGridOn,
   MdGridOff,
   MdDeleteSweep,
+  MdPlayArrow,
+  MdPlayDisabled,
+  MdClose,
+  MdPause,
+  MdUndo,
+  MdRedo,
+  MdSkipPrevious,
+  MdSkipNext,
 } from 'react-icons/md';
 
 const infoString =
-` Basic usage:
+`Usage:
   - Create node: double click on the background
   - Select node: click on the node
+  - Edit node: double click on the node
   - Move selected node: drag the selected node
-  - Delete selected node: press 'Delete' key or press the upper trash icon in the menu
+  - Delete selected node: press 'Delete' key
 
   - Add edge: click on the (unselected) start node and hold on, move to the end node and then release
-  - Delete edge: same as deleting node. or "add" the edge again
+  - Edit edge: double click on the edge
+  - Delete edge: link the nodes again or select and then press 'Delete' key
   
   - Move canvas: drag the background
   - Zoom: scroll the page
 
-  - Undo: Ctrl+Z or press the undo icon in the menu
-  - Redo: Ctrl+Y or press the redo icon in the menu
-  - Save: press the save icon in the menu
-
-  - Toggle alignment to integer coordinate: press the grid icon in the menu
-  - Delete all: press the lower trash icon in the menu
+  - Undo: Ctrl+Z
+  - Redo: Ctrl+Y
 `;
 
 const union = (setA, setB) => {
@@ -88,6 +98,14 @@ export default function EditorPage() {
 
   const [alignGrid, setAlignGrid] = useState(false);
 
+  const [runPanelOpen, setRunPanelOpen] = useState(false);
+  const [eventQueue, setEventQueue] = useState([]);
+  const [curEventIdx, setCurEventIdx] = useState(-1);
+  const [curNode, setCurNode] = useState(null);
+  const [runHistory, setRunHistory] = useState([]);
+  const [autoRun, setAutoRun] = useState(null);
+  const eventQueueRef = useRef(null);
+
   const radius = 50;
   const fontSize = 20;
 
@@ -113,6 +131,12 @@ export default function EditorPage() {
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
 
+  const restartEventRunner = useCallback((newEntryNode) => {
+    setCurEventIdx(-1);
+    setCurNode(newEntryNode);
+    setRunHistory([]);
+  }, []);
+
   useEffect(() => {
     if(history.length === 0 && userData?.[projectId]) {
       setNodes(userData[projectId].graph.nodes);
@@ -127,46 +151,51 @@ export default function EditorPage() {
         entryNode: userData[projectId].entryNode,
       }]);
       setHistoryTime(0);
+      restartEventRunner(userData[projectId].entryNode);
     }
-  }, [userData, projectId, history]);
+  }, [userData, projectId, history, restartEventRunner]);
 
   const updateNodes = useCallback((newNodes, save=true) => {
     setNodes(newNodes);
+    restartEventRunner(entryNode);
 
     if(save) {
       setHistory(history.slice(0, historyTime + 1).concat([{ nodes: newNodes, edges, events, entryNode }]));
       setHistoryTime(historyTime + 1);
     }
-  }, [edges, events, entryNode, history, historyTime]);
+  }, [edges, events, entryNode, history, historyTime, restartEventRunner]);
 
-  const updateEdges = useCallback((newEdges, save=true) => {
+  const updateEdges = useCallback((newEdges, newEvents, save=true) => {
     setEdges(newEdges);
+    restartEventRunner(entryNode);
 
     if(save) {
-      setHistory(history.slice(0, historyTime + 1).concat([{ nodes, edges: newEdges, events, entryNode }]));
+      setHistory(history.slice(0, historyTime + 1).concat([{ nodes, edges: newEdges, events: newEvents, entryNode }]));
       setHistoryTime(historyTime + 1);
     }
-  }, [nodes, events, entryNode, history, historyTime]);
+  }, [nodes, entryNode, history, historyTime, restartEventRunner]);
 
   // update nodes and edges simultaneously to prevent error
-  const updateGraph = useCallback((newNodes, newEdges, save=true) => {
+  const updateGraph = useCallback((newNodes, newEdges, newEvents, save=true) => {
     setNodes(newNodes);
     setEdges(newEdges);
+    restartEventRunner(entryNode);
 
     if(save) {
-      setHistory(history.slice(0, historyTime + 1).concat([{ nodes: newNodes, edges: newEdges, events, entryNode }]));
+      setHistory(history.slice(0, historyTime + 1).concat([{ nodes: newNodes, edges: newEdges, events: newEvents, entryNode }]));
       setHistoryTime(historyTime + 1);
     }
-  }, [events, entryNode, history, historyTime]);
+  }, [entryNode, history, historyTime, restartEventRunner]);
 
   const updateEntryNode = useCallback((newEntryNode, save=true) => {
     setEntryNode(newEntryNode);
+    restartEventRunner(newEntryNode);
 
     if(save) {
       setHistory(history.slice(0, historyTime + 1).concat([{ nodes, edges, events, entryNode: newEntryNode }]));
       setHistoryTime(historyTime + 1);
     }
-  }, [nodes, edges, events, history, historyTime]);
+  }, [nodes, edges, events, history, historyTime, restartEventRunner]);
 
   const undo = useCallback(() => {
     if(historyTime <= 0) return;
@@ -175,7 +204,8 @@ export default function EditorPage() {
     setEvents(history[historyTime-1].events);
     setEntryNode(history[historyTime-1].entryNode);
     setHistoryTime(historyTime-1);
-  }, [history, historyTime]);
+    restartEventRunner(history[historyTime-1].entryNode);
+  }, [history, historyTime, restartEventRunner]);
 
   const redo = useCallback(() => {
     if(historyTime + 1 >= history.length) return;
@@ -184,7 +214,8 @@ export default function EditorPage() {
     setEvents(history[historyTime+1].events);
     setEntryNode(history[historyTime+1].entryNode);
     setHistoryTime(historyTime+1);
-  }, [history, historyTime]);
+    restartEventRunner(history[historyTime+1].entryNode);
+  }, [history, historyTime, restartEventRunner]);
 
   const saveData = () => {
     setUserData({
@@ -209,6 +240,7 @@ export default function EditorPage() {
 
     setHistory(history.slice(0, historyTime + 1).concat([{ nodes: [], edges: [], events: [], entryNode: null }]));
     setHistoryTime(historyTime + 1);
+    restartEventRunner(null);
   };
 
   const deleteNode = useCallback(idx => {
@@ -226,8 +258,8 @@ export default function EditorPage() {
         ...edges[idx],
         visible: false,
       }
-    }));
-  }, [edges, updateEdges]);
+    }), events);
+  }, [edges, events, updateEdges]);
 
   const deleteSelected = useCallback(() => {
     if(!selected) return;
@@ -345,7 +377,7 @@ export default function EditorPage() {
               ...edges[edgeIdx],
               visible: false,
             }
-          }));
+          }), events);
         }
         else {
           // createEdge
@@ -362,7 +394,8 @@ export default function EditorPage() {
               to: idx,
               events: [],
               visible: true,
-            }])
+            }]),
+            events,
           );
         }
       }
@@ -449,7 +482,10 @@ export default function EditorPage() {
       buttons: [
         {
           text: 'Make it the initial state',
-          onClick: e => updateEntryNode(idx),
+          onClick: () => {
+            updateEntryNode(idx);
+            toggleModal();
+          },
         },
         {
           text: 'Close',
@@ -482,14 +518,15 @@ export default function EditorPage() {
                 {
                   text: 'Save',
                   onClick: () => {
-                    let newEvents = new Set(e.target.value.split(',').map(x => x.trim()));
-                    setEvents(events => union(events, newEvents));
+                    const newEdgeEvents = new Set(e.target.value.split(',').map(x => x.trim()));
+                    const newEvents = union(events, newEdgeEvents);
+                    setEvents(newEvents);
                     updateEdges(Object.assign([], edges, {
                       [idx]: {
                         ...edges[idx],
-                        events: [...newEvents],
+                        events: [...newEdgeEvents],
                       }
-                    }));
+                    }), newEvents);
                     toggleModal();
                   },
                 },
@@ -524,6 +561,84 @@ export default function EditorPage() {
     toggleModal();
   };
 
+  const toggleRunPanel = () => {
+    restartEventRunner(entryNode);
+    setRunPanelOpen(state => !state);
+  };
+
+  const runOneEvent = () => {
+    if(curEventIdx + 1 >= eventQueue.length) return;
+    let cur = curEventIdx === -1 ? entryNode : curNode;
+    if(cur === null) return;
+
+    let event = eventQueue[curEventIdx + 1];
+
+    const nextNodes = [];
+
+    for(const edgeIdx of nodes[cur].adj) {
+      const edge = edges[edgeIdx];
+      if(edge.events.includes(event)) {
+        nextNodes.push(edge.to);
+      }
+    }
+
+    const nextNode = nextNodes.length === 0 ? cur : nextNodes[Math.floor(Math.random() * nextNodes.length)];
+
+    setCurNode(nextNode);
+    setRunHistory(history => history.concat([curNode]));
+    setCurEventIdx(idx => idx + 1);
+  };
+
+  const undoEvent = () => {
+    if(curEventIdx <= -1) return;
+    setCurNode(runHistory[runHistory.length - 1])
+    setRunHistory(history => history.slice(0, -1));
+    setCurEventIdx(idx => idx - 1);
+  };
+  
+  /*
+   * doesn't work because of multiple setstate
+  const runAllEvent = () => {
+    for(let i = curEventIdx; i + 1 < eventQueue.length; i++) {
+      runOneEvent();
+    }
+  };
+  */
+
+  useEffect(() => {
+    if(autoRun) {
+      const id = setTimeout(() => {
+        runOneEvent();
+      }, 500);
+      return () => clearTimeout(id);
+    }
+  });
+
+  useEffect(() => {
+    const curEventNode = eventQueueRef?.current?.childNodes?.[curEventIdx];
+    if(curEventNode) {
+      curEventNode.scrollIntoView({behavior: 'smooth'});
+    }
+  }, [curEventIdx]);
+
+  const clearEvent = () => {
+    setEventQueue([]);
+    restartEventRunner(entryNode);
+  };
+
+  const clearRedundantEvent = () => {
+    // not undoable now
+    const curEventSet = new Set();
+    for(const edge of edges) {
+      if(edge.visible !== true) continue;
+      if(nodes[edge.from].visible !== true || nodes[edge.to].visible !== true) continue;
+      for(const event of edge.events) {
+        curEventSet.add(event);
+      }
+    }
+    setEvents(curEventSet);
+  };
+
   return (
     <main ref={mainRef}>
     {!userData?.[projectId] ?
@@ -552,13 +667,13 @@ export default function EditorPage() {
               onPointerDblClick={editEdge(idx)}
             >
               <Arrow
-                x={zoom * (nodes[edge.from].x + radius - viewPos.x)}
-                y={zoom * (nodes[edge.from].y + radius - viewPos.y)}
+                x={zoom * (nodes[edge.from].x + radius + radius * Math.cos(arrowAngle) - viewPos.x)}
+                y={zoom * (nodes[edge.from].y + radius + radius * Math.sin(arrowAngle) - viewPos.y)}
                 points={[
                   0,
                   0,
-                  zoom * (dx - radius * Math.cos(arrowAngle)),
-                  zoom * (dy - radius * Math.sin(arrowAngle)),
+                  zoom * (dx - 2 * radius * Math.cos(arrowAngle)),
+                  zoom * (dy - 2 * radius * Math.sin(arrowAngle)),
                 ]}
                 pointerLength={20 * zoom}
                 pointerWidth={20 * zoom}
@@ -586,7 +701,7 @@ export default function EditorPage() {
           })}
           {nodes?.map((node, idx) => (
             <Group key={idx} x={zoom * (node.x - viewPos.x)} y={zoom * (node.y - viewPos.y)} draggable={selected?.type === 'node' && idx === selected.idx} onDragStart={dragNodeStart(idx)} onDragMove={dragNodeMove(idx)} onDragEnd={dragNodeEnd(idx)} onPointerDblClick={editNode(idx)} onPointerClick={selectNode(idx)} onPointerDown={pointerDownNode(idx)} onPointerUp={pointerUpNode(idx)} visible={node.visible}>
-              <Circle x={zoom * radius} y={zoom * radius} radius={zoom * radius} fill='gold' shadowBlur={selected?.type === 'node' && idx === selected.idx ? 20 : 0} stroke='black' strokeWidth={2} />
+              <Circle x={zoom * radius} y={zoom * radius} radius={zoom * radius} fill={runPanelOpen ? (idx === curNode ? 'deepskyblue' : (runHistory?.includes(idx) ? 'gold' : 'lightyellow')) : 'gold'} shadowBlur={selected?.type === 'node' && idx === selected.idx ? 20 : 0} stroke='black' strokeWidth={2} />
               {idx === entryNode && (
                 <Circle x={zoom * radius} y={zoom * radius} radius={zoom * (radius * 0.9)} stroke='black' strokeWidth={2} />
               )}
@@ -599,33 +714,141 @@ export default function EditorPage() {
               isOpen={menuOpen}
               toggle={() => setMenuOpen(state => !state)}
               direction='up'
-              style={{top: canvasHeight-100, left: canvasWidth-100}}
+              className='position-absolute'
+              style={{top: runPanelOpen ? canvasHeight - 220 - 100 : canvasHeight-100, left: canvasWidth-100}}
             >
               <DropdownToggle color='light'><FaBars /></DropdownToggle>
               <DropdownMenu style={{minWidth: 0}}>
-                <DropdownItem toggle={false} onClick={undo}>
+                <DropdownItem toggle={false} id='menuUndo' onClick={undo}>
                   <FaUndo />
                 </DropdownItem>
-                <DropdownItem toggle={false} onClick={redo}>
+                <DropdownItem toggle={false} id='menuRedo' onClick={redo}>
                   <FaRedo />
                 </DropdownItem>
-                <DropdownItem toggle={false} onClick={deleteSelected}>
+                <DropdownItem toggle={false} id='menuDelete' onClick={deleteSelected}>
                   <FaTrash />
                 </DropdownItem>
-                <DropdownItem toggle={false} onClick={saveData}>
+                <DropdownItem toggle={false} id='menuSave' onClick={saveData}>
                   <FaSave />
                 </DropdownItem>
-                <DropdownItem toggle={false} onClick={clearData}>
+                <DropdownItem toggle={false} id='menuClear' onClick={clearData}>
                   <MdDeleteSweep />
                 </DropdownItem>
-                <DropdownItem toggle={false} onClick={() => setAlignGrid(state => !state)}>
+                <DropdownItem toggle={false} id='menuGrid' onClick={() => setAlignGrid(state => !state)}>
                   {alignGrid ? <MdGridOn /> : <MdGridOff />}
                 </DropdownItem>
-                <DropdownItem toggle={false} onClick={toggleInfoModal}>
+                <DropdownItem toggle={false} id='menuRun' onClick={toggleRunPanel}>
+                  {runPanelOpen ? <MdPlayArrow /> : <MdPlayDisabled />}
+                </DropdownItem>
+                <DropdownItem toggle={false} id='menuInfo' onClick={toggleInfoModal}>
                   <FaInfo />
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
+            {menuOpen && (<>
+              <UncontrolledTooltip placement='left' target='menuUndo'>
+                Undo
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuRedo'>
+                Redo
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuDelete'>
+                Delete selected item
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuSave'>
+                Save
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuClear'>
+                Clear all
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuGrid'>
+                Toggle alignment to integer coordinates
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuRun'>
+                Toggle event runner panel
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuInfo'>
+                Help
+              </UncontrolledTooltip>
+            </>)}
+            
+            {runPanelOpen && (
+            <section className='position-absolute border-top border-2 bg-light' style={{top: canvasHeight - 220, width: canvasWidth, height: 220}}>
+              <section className='d-flex align-items-center justify-content-between p-2' style={{height: '40px'}}>
+                <div>
+                  <Button color='light' size='sm' id='panelRun' onClick={() => setAutoRun(true)}>
+                    <MdPlayArrow />
+                  </Button>
+                  <Button color='light' size='sm' id='panelPause' onClick={() => setAutoRun(false)}>
+                    <MdPause />
+                  </Button>
+                  <Button color='light' size='sm' id='panelUndo' onClick={undoEvent}>
+                    <MdUndo />
+                  </Button>
+                  <Button color='light' size='sm' id='panelRedo' onClick={runOneEvent}>
+                    <MdRedo />
+                  </Button>
+                  <Button color='light' size='sm' id='panelRestart' onClick={() => restartEventRunner(entryNode)}>
+                    <MdSkipPrevious />
+                  </Button>
+                  {/*<Button color='light' size='sm' id='panelRunAll' onClick={runAllEvent}>
+                    <MdSkipNext />
+                  </Button>*/}
+                  <Button color='light' size='sm' id='panelClear' onClick={clearEvent}>
+                    <MdDeleteSweep />
+                  </Button>
+                  <Button color='light' size='sm' id='panelClearRedundant' onClick={clearRedundantEvent}>
+                    <FaBroom />
+                  </Button>
+                </div>
+                <div>
+                  <Button color='light' size='sm' id='panelClose' onClick={toggleRunPanel}>
+                    <MdClose />
+                  </Button>
+                </div>
+              </section>
+              <section className='EventContainer border-top border-1 d-grid align-items-center gap-1 p-2 overflow-auto' ref={eventQueueRef} style={{height: '80px'}}>
+              {eventQueue.map((event, idx) => (
+                <Button key={idx} className='EventButton text-truncate' color={idx < curEventIdx ? 'success' : idx === curEventIdx ? 'primary' : 'secondary'}>
+                  {event}
+                </Button>
+              ))}
+              </section>
+              <section className='EventContainer border-top border-1 d-grid align-items-center gap-1 p-2 overflow-auto' style={{height: '80px'}}>
+              {events && [...events].map((event, idx) => (
+                <Button key={idx} className='EventButton text-truncate' onClick={() => setEventQueue(queue => queue.concat([event]))}>
+                  {event}
+                </Button>
+              ))}
+              </section>
+              <UncontrolledTooltip placement='top' target='panelRun'>
+                Run the events
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='top' target='panelPause'>
+                Pause
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='top' target='panelUndo'>
+                Undo one event
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='top' target='panelRedo'>
+                Run one event
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='top' target='panelRestart'>
+                Restart
+              </UncontrolledTooltip>
+              {/*<UncontrolledTooltip placement='top' target='panelRunAll'>
+                Run all events
+              </UncontrolledTooltip>*/}
+              <UncontrolledTooltip placement='top' target='panelClear'>
+                Clear the event queue
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='top' target='panelClearRedundant'>
+                Clear events not present in the graph
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='top' target='panelClose'>
+                Close panel
+              </UncontrolledTooltip>
+            </section>)}
           </Html>
         </Layer>
       </Stage>
