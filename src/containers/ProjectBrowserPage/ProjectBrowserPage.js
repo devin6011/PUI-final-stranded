@@ -41,7 +41,7 @@ function ProjectCard({ project, deleteProject, editProjectName, editProjectDescr
   };
 
   return (
-    <Card>
+    <Card className='shadow'>
       <Link to={`/edit/${project.id}`}>
         <div className='d-flex justify-content-center pe-none'>
           <Stage height={250} width={300}>
