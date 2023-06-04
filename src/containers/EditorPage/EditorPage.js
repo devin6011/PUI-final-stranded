@@ -240,7 +240,7 @@ function EventQueue({ eventQueue, setEventQueue, curEventIdx, eventQueueRef }) {
   );
 
   return (
-    <section ref={drop} className='border-top border-1' style={{height: '80px'}}>
+    <section ref={drop} className='border-top border-1 d-flex align-items-center' style={{height: '80px'}}>
       <div ref={eventQueueRef} className='EventContainer d-grid align-items-center gap-1 p-2 overflow-auto'>
       {eventQueue.map((event, idx) => (
         <EventQueueItem key={event.id} id={event.id} name={event.name} findEventQueueItem={findEventQueueItem} moveEventQueueItem={moveEventQueueItem} removeEventQueueItem={removeEventQueueItem} color={idx < curEventIdx ? 'success' : idx === curEventIdx ? 'primary' : 'secondary'} />
@@ -699,7 +699,7 @@ export default function EditorPage() {
                 {
                   text: 'Save',
                   onClick: () => {
-                    const newEdgeEvents = new Set(e.target.value.split(',').map(x => x.trim()));
+                    const newEdgeEvents = new Set(e.target.value.split(',').map(x => x.trim()).filter(x => x));
                     const newEvents = union(events, newEdgeEvents);
                     setEvents(newEvents);
                     updateEdges(Object.assign([], edges, {
