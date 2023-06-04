@@ -44,25 +44,6 @@ import {
   MdFitScreen,
 } from 'react-icons/md';
 
-const infoString =
-`Usage:
-  - Create node: double click on the background
-  - Select node: click on the node
-  - Edit node: double click on the node
-  - Move selected node: drag the selected node
-  - Delete selected node: press 'Delete' key
-
-  - Add edge: click on the (unselected) start node and hold on, move to the end node and then release
-  - Edit edge: double click on the edge
-  - Delete edge: link the nodes again or select and then press 'Delete' key
-  
-  - Move canvas: drag the background
-  - Zoom: scroll the page
-
-  - Undo: Ctrl+Z
-  - Redo: Ctrl+Y
-`;
-
 const union = (setA, setB) => {
   const _union = new Set(setA);
   for(const x of setB) {
@@ -187,7 +168,7 @@ function Edge({ edge, fontSize, radius, viewPos, zoom, isSelected, color, nodes,
 
 export default function EditorPage() {
   const { projectId } = useParams();
-  const { user, userData, setUserData, toggleModal, setModalData } = useOutletContext();
+  const { user, userData, setUserData, toggleModal, setModalData, toggleInfoModal} = useOutletContext();
   const mainRef = useRef(null);
   const navigate = useNavigate();
 
@@ -685,19 +666,6 @@ export default function EditorPage() {
       setZoom(newZoom);
       setViewPos(newViewPos);
     }
-  };
-
-  const toggleInfoModal = () => {
-    setModalData({
-      body: infoString,
-      buttons: [
-        {
-          text: 'Close',
-          onClick: toggleModal,
-        },
-      ],
-    });
-    toggleModal();
   };
 
   const toggleRunPanel = () => {

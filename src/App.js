@@ -9,6 +9,8 @@ import {
   Modal,
   ModalBody,
   ModalFooter,
+  ListGroup,
+  ListGroupItem,
 } from 'reactstrap';
 import { FaGoogle } from 'react-icons/fa';
 
@@ -74,6 +76,7 @@ function App() {
   const [userData, __setUserData] = useState(null);
   const [modal, setModal] = useState(false);
   const [modalData, setModalData] = useState({});
+  const [infoModal, setInfoModal] = useState(false);
 
   useEffect(() => {
     onAuthStateChanged(auth, user => {
@@ -102,6 +105,7 @@ function App() {
   }, [user]);
 
   const toggleModal = useCallback(() => setModal(modal => !modal), []);
+  const toggleInfoModal = useCallback(() => setInfoModal(modal => !modal), []);
 
   return (
     <>
@@ -113,11 +117,13 @@ function App() {
         setUserData,
         toggleModal,
         setModalData,
+        toggleInfoModal,
       }} />
 
       <Modal
         isOpen={modal}
         toggle={toggleModal}
+        onWheel={e => {e.stopPropagation()}}
       >
         <ModalBody>
           <pre style={{fontSize: '1em', fontFamily: 'system-ui', whiteSpace: 'pre-wrap'}}>{modalData?.body}</pre>
@@ -138,6 +144,75 @@ function App() {
             {button.text}
           </Button>
         ))}
+        </ModalFooter>
+      </Modal>
+      
+      <Modal
+        isOpen={infoModal}
+        toggle={toggleInfoModal}
+        size='lg'
+        onWheel={e => {e.stopPropagation()}}
+      >
+        <ModalBody>
+          <h2 className='fs-3'>Usage</h2>
+          <ListGroup flush>
+            <ListGroupItem>
+              <h3 className='fs-5'>Create node</h3>
+              <b>Double click</b> on the background.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Create edge</h3>
+              <b>Click</b> on an <b>unselected</b> start node and <b>hold on</b>, move to the end node and then release.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Select node / edge</h3>
+              <b>Click</b> on the node / edge. Click on the background to deselect.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Edit node / edge</h3>
+              <b>Double click</b> on the node / edge.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Move node</h3>
+              <b>Select</b> and <b>Drag</b> the node.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Delete node</h3>
+              <b>Select</b> and <b>press</b> <code>Delete</code>.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Delete edge</h3>
+              <ListGroup flush>
+                <ListGroupItem>
+                  Link the nodes again.
+                </ListGroupItem>
+                <ListGroupItem>
+                  <b>Select</b> and <b>press</b> <code>Delete</code>.
+                </ListGroupItem>
+              </ListGroup>
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Move canvas</h3>
+              <b>Drag</b> the background.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Zoom</h3>
+              <b>Scroll</b> the canvas.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Undo</h3>
+              <b>Press</b> <code>Ctrl+Z</code>.
+            </ListGroupItem>
+            <ListGroupItem>
+              <h3 className='fs-5'>Redo</h3>
+              <b>Press</b> <code>Ctrl+Y</code>.
+            </ListGroupItem>
+          </ListGroup>
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={toggleInfoModal}>
+            Close
+          </Button>
         </ModalFooter>
       </Modal>
     </>
