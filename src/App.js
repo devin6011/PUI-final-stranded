@@ -118,6 +118,7 @@ function App() {
         toggleModal,
         setModalData,
         toggleInfoModal,
+        setInfoModal,
       }} />
 
       <Modal

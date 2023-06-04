@@ -252,7 +252,7 @@ function EventQueue({ eventQueue, setEventQueue, curEventIdx, eventQueueRef }) {
 
 export default function EditorPage() {
   const { projectId } = useParams();
-  const { user, userData, setUserData, toggleModal, setModalData, toggleInfoModal} = useOutletContext();
+  const { user, userData, setUserData, toggleModal, setModalData, toggleInfoModal, setInfoModal} = useOutletContext();
   const mainRef = useRef(null);
   const navigate = useNavigate();
 
@@ -296,6 +296,10 @@ export default function EditorPage() {
       return () => clearTimeout(timer);
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    setInfoModal(true);
+  }, [setInfoModal]);
 
   useEffect(() => {
     const currentHeight = window.innerHeight - mainRef?.current?.offsetTop;
