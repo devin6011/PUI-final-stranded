@@ -316,6 +316,7 @@ export default function EditorPage() {
     setCurEventIdx(-1);
     setCurNode(newEntryNode);
     setRunHistory([]);
+    setAutoRun(false);
   }, []);
 
   useEffect(() => {
@@ -324,6 +325,8 @@ export default function EditorPage() {
       setEdges(userData[projectId].graph.edges);
       setEvents(new Set(userData[projectId].events));
       setEntryNode(userData[projectId].entryNode);
+      setEventQueue(userData[projectId].eventQueue.map((event, idx) => ({ id: idx, name: event })));
+      setEventQueueNextId(userData[projectId].eventQueue.length);
 
       setHistory([{
         nodes: userData[projectId].graph.nodes,
@@ -409,6 +412,7 @@ export default function EditorPage() {
         },
         events: [...events],
         entryNode: entryNode,
+        eventQueue: eventQueue.map(event => event.name),
       },
     });
   };
@@ -418,6 +422,7 @@ export default function EditorPage() {
     setEdges([]);
     setEvents(new Set());
     setEntryNode(null);
+    setEventQueue([]);
 
     setHistory(history.slice(0, historyTime + 1).concat([{ nodes: [], edges: [], events: [], entryNode: null }]));
     setHistoryTime(historyTime + 1);
@@ -645,7 +650,7 @@ export default function EditorPage() {
 
   const editNode = idx => e => {
     setModalData({
-      body: 'Edit state:',
+      body: 'Edit state',
       inputs: [
         {
           type: 'text',
@@ -662,7 +667,14 @@ export default function EditorPage() {
       ],
       buttons: [
         {
-          text: 'Make it the initial state',
+          text: 'Delete',
+          onClick: () => {
+            deleteNode(idx);
+            toggleModal();
+          },
+        },
+        {
+          text: 'As initial state',
           onClick: () => {
             updateEntryNode(idx);
             toggleModal();
@@ -680,7 +692,7 @@ export default function EditorPage() {
 
   const editEdge = idx => e => {
     setModalData({
-      body: `Edit edge (${nodes[edges[idx].from].name} → ${nodes[edges[idx].to].name}):`,
+      body: `Edit edge (${nodes[edges[idx].from].name} → ${nodes[edges[idx].to].name})`,
       inputs: [
         {
           type: 'text',
@@ -756,7 +768,6 @@ export default function EditorPage() {
   const toggleRunPanel = () => {
     restartEventRunner(entryNode);
     setRunPanelOpen(state => !state);
-    setAutoRun(false);
   };
 
   const runOneEvent = () => {

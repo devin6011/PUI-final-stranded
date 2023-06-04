@@ -85,6 +85,7 @@ export default function ProjectBrowserPage() {
         },
         events: [],
         entryNode: null,
+        eventQueue: [],
       },
     });
     navigate(`/edit/${projectId}`);
