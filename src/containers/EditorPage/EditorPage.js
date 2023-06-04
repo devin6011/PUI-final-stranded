@@ -41,6 +41,7 @@ import {
   MdRedo,
   MdSkipPrevious,
   MdSkipNext,
+  MdFitScreen,
 } from 'react-icons/md';
 
 const infoString =
@@ -68,6 +69,120 @@ const union = (setA, setB) => {
     _union.add(x);
   }
   return _union;
+}
+
+function Node({ viewPos, zoom, node, isSelected, dragNodeStart, dragNodeMove, dragNodeEnd, editNode, selectNode, pointerDownNode, pointerUpNode, radius, fill, stroke, doubleStroke, fontSize }) {
+  return (
+    <Group
+      x={zoom * (node.x - viewPos.x)}
+      y={zoom * (node.y - viewPos.y)}
+      draggable={isSelected}
+      onDragStart={dragNodeStart}
+      onDragMove={dragNodeMove}
+      onDragEnd={dragNodeEnd}
+      onPointerDblClick={editNode}
+      onPointerClick={selectNode}
+      onPointerDown={pointerDownNode}
+      onPointerUp={pointerUpNode}
+      visible={node.visible}
+    >
+      <Circle
+        x={zoom * radius}
+        y={zoom * radius}
+        radius={zoom * radius}
+        fill={fill}
+        shadowBlur={isSelected ? 20 : 0}
+        stroke={stroke}
+        strokeWidth={2}
+      />
+      {doubleStroke && (
+        <Circle
+          x={zoom * radius}
+          y={zoom * radius}
+          radius={zoom * (radius * 0.9)}
+          stroke={stroke}
+          strokeWidth={2}
+        />
+      )}
+      <Text
+        text={node.name}
+        fontSize={zoom * fontSize}
+        width={zoom * radius * 2}
+        height={zoom * radius * 2}
+        align='center'
+        verticalAlign='middle'
+        listening={false}
+      />
+    </Group>
+  );
+}
+
+function DrawingEdge({ viewPos, zoom, drawingEdge, color, opacity }) {
+  return (
+    <Arrow
+      x={zoom * (drawingEdge.fromX - viewPos.x)}
+      y={zoom * (drawingEdge.fromY - viewPos.y)}
+      points={[0, 0, zoom * (drawingEdge.toX - drawingEdge.fromX), zoom * (drawingEdge.toY - drawingEdge.fromY)]}
+      pointerLength={20 * zoom}
+      pointerWidth={20 * zoom}
+      fill={color}
+      stroke={color}
+      strokeWidth={2 * zoom}
+      opacity={opacity}
+    />
+  );
+}
+
+function Edge({ edge, fontSize, radius, viewPos, zoom, isSelected, color, nodes, selectEdge, editEdge, scale }) {
+  const dx = nodes[edge.to].x - nodes[edge.from].x;
+  const dy = nodes[edge.to].y - nodes[edge.from].y;
+  const arrowAngle = Math.atan2(dy, dx);
+  // offset for rotation
+  const textOffsetX = (Math.abs(dx) + 2 * radius) / 2;
+  const textOffsetY = (Math.abs(dy) + 2 * radius) / 2;
+  // displacement from center
+  const textShiftX = fontSize * Math.sin(arrowAngle);
+  const textShiftY = -fontSize * Math.cos(arrowAngle);
+
+  return (
+  <Group
+    visible={edge.visible && nodes[edge.from].visible && nodes[edge.to].visible}
+    onPointerClick={selectEdge}
+    onPointerDblClick={editEdge}
+  >
+    <Arrow
+      x={zoom * (nodes[edge.from].x + radius + radius * Math.cos(arrowAngle) - viewPos.x)}
+      y={zoom * (nodes[edge.from].y + radius + radius * Math.sin(arrowAngle) - viewPos.y)}
+      points={[
+        0,
+        0,
+        zoom * (dx - 2 * radius * Math.cos(arrowAngle)),
+        zoom * (dy - 2 * radius * Math.sin(arrowAngle)),
+      ]}
+      pointerLength={20 * zoom * (scale ? scale : 1)}
+      pointerWidth={20 * zoom * (scale ? scale : 1)}
+      fill={color}
+      stroke={color}
+      strokeWidth={2 * zoom * (scale ? scale : 1)}
+      shadowBlur={isSelected ? 20 : 0}
+    />
+    <Text
+      x={zoom * (Math.min(nodes[edge.from].x, nodes[edge.to].x) + textOffsetX + textShiftX - viewPos.x)}
+      y={zoom * (Math.min(nodes[edge.from].y, nodes[edge.to].y) + textOffsetY + textShiftY - viewPos.y)}
+      width={zoom * (Math.abs(dx) + 2 * radius)}
+      height={zoom * (Math.abs(dy) + 2 * radius)}
+      align='center'
+      verticalAlign='middle'
+      text={edge.events.join(', ')}
+      fontSize={zoom * fontSize}
+      fill={color}
+      listening={false}
+      rotation={dx >= 0 ? arrowAngle / Math.PI * 180 : arrowAngle / Math.PI * 180 + 180}
+      offsetX={zoom * textOffsetX}
+      offsetY={zoom * textOffsetY}
+    />
+  </Group>
+  );
 }
 
 export default function EditorPage() {
@@ -548,6 +663,30 @@ export default function EditorPage() {
     e.cancelBubble = true;
   };
 
+  const fitScreen = () => {
+    if(!nodes || nodes.length === 0) {
+      setZoom(1);
+      setViewPos({
+        x: 0,
+        y: 0,
+      });
+    }
+    else {
+      let left = nodes.map(node => node.x).reduce((prev, val) => Math.min(prev, val));
+      let top = nodes.map(node => node.y).reduce((prev, val) => Math.min(prev, val));
+      let right = nodes.map(node => node.x).reduce((prev, val) => Math.max(prev, val)) + 2 * radius;
+      let bottom = nodes.map(node => node.y).reduce((prev, val) => Math.max(prev, val)) + 2 * radius;
+
+      const margin = 50;
+
+      const newViewPos = { x: left - margin, y: top - margin };
+      let newZoom = 1 / Math.max((right - left + margin * 2) / canvasWidth, (bottom - top + margin * 2) / canvasHeight);
+      newZoom = Math.max(0.2, Math.min(2, newZoom));
+      setZoom(newZoom);
+      setViewPos(newViewPos);
+    }
+  };
+
   const toggleInfoModal = () => {
     setModalData({
       body: infoString,
@@ -564,6 +703,7 @@ export default function EditorPage() {
   const toggleRunPanel = () => {
     restartEventRunner(entryNode);
     setRunPanelOpen(state => !state);
+    setAutoRun(false);
   };
 
   const runOneEvent = () => {
@@ -591,7 +731,7 @@ export default function EditorPage() {
 
   const undoEvent = () => {
     if(curEventIdx <= -1) return;
-    setCurNode(runHistory[runHistory.length - 1])
+    setCurNode(runHistory[runHistory.length - 1]);
     setRunHistory(history => history.slice(0, -1));
     setCurEventIdx(idx => idx - 1);
   };
@@ -639,74 +779,90 @@ export default function EditorPage() {
     setEvents(curEventSet);
   };
 
+  let curEdgeIdx;
+  if(runPanelOpen) {
+    curEdgeIdx = edges?.findIndex(edge => edge.to === curNode && edge.from === runHistory[runHistory.length - 1]);
+    curEdgeIdx = curEdgeIdx == -1 ? undefined : curEdgeIdx;
+  }
+
   return (
     <main ref={mainRef}>
     {!userData?.[projectId] ?
       <h2 className='m-3'>This project ID is invalid!</h2>
       :
-      <Stage width={canvasWidth} height={canvasHeight} onPointerDblClick={!dragging && createNode} onPointerClick={!dragging && (() => setSelected(null))} onPointerDown={pointerDownCanvas} onPointerMove={pointerMoveCanvas} onPointerUp={pointerUpCanvas}>
+      <Stage
+        width={canvasWidth}
+        height={canvasHeight}
+        onPointerDblClick={!dragging && createNode}
+        onPointerClick={!dragging && (() => setSelected(null))}
+        onPointerDown={pointerDownCanvas}
+        onPointerMove={pointerMoveCanvas}
+        onPointerUp={pointerUpCanvas}
+      >
         <Layer>
           {drawingEdge && (
-            <Arrow x={zoom * (drawingEdge.fromX - viewPos.x)} y={zoom * (drawingEdge.fromY - viewPos.y)} points={[0, 0, zoom * (drawingEdge.toX - drawingEdge.fromX), zoom * (drawingEdge.toY - drawingEdge.fromY)]} pointerLength={20 * zoom} pointerWidth={20 * zoom} fill='black' stroke='black' strokeWidth={2 * zoom} opacity={0.5} />
+            <DrawingEdge
+              viewPos={viewPos}
+              zoom={zoom}
+              drawingEdge={drawingEdge}
+              color='black'
+              opacity={0.5}
+            />
           )}
           {edges?.map((edge, idx) => {
-            const dx = nodes[edge.to].x - nodes[edge.from].x;
-            const dy = nodes[edge.to].y - nodes[edge.from].y;
-            const arrowAngle = Math.atan2(dy, dx);
-            // offset for rotation
-            const textOffsetX = (Math.abs(dx) + 2 * radius) / 2;
-            const textOffsetY = (Math.abs(dy) + 2 * radius) / 2;
-            // displacement from center
-            const textShiftX = fontSize * Math.sin(arrowAngle);
-            const textShiftY = -fontSize * Math.cos(arrowAngle);
+            if(idx === curEdgeIdx) return;
             return (
-            <Group
-              key={idx}
-              visible={edge.visible && nodes[edge.from].visible && nodes[edge.to].visible}
-              onPointerClick={selectEdge(idx)}
-              onPointerDblClick={editEdge(idx)}
-            >
-              <Arrow
-                x={zoom * (nodes[edge.from].x + radius + radius * Math.cos(arrowAngle) - viewPos.x)}
-                y={zoom * (nodes[edge.from].y + radius + radius * Math.sin(arrowAngle) - viewPos.y)}
-                points={[
-                  0,
-                  0,
-                  zoom * (dx - 2 * radius * Math.cos(arrowAngle)),
-                  zoom * (dy - 2 * radius * Math.sin(arrowAngle)),
-                ]}
-                pointerLength={20 * zoom}
-                pointerWidth={20 * zoom}
-                fill='black'
-                stroke='black'
-                strokeWidth={2 * zoom}
-                shadowBlur={selected?.type === 'edge' && idx === selected.idx ? 20 : 0}
+              <Edge
+                key={idx}
+                edge={edge}
+                fontSize={fontSize}
+                radius={radius}
+                viewPos={viewPos}
+                zoom={zoom}
+                isSelected={selected?.type === 'edge' && idx === selected.idx}
+                color='black'
+                nodes={nodes}
+                selectEdge={selectEdge(idx)}
+                editEdge={editEdge(idx)}
               />
-              <Text
-                x={zoom * (Math.min(nodes[edge.from].x, nodes[edge.to].x) + textOffsetX + textShiftX - viewPos.x)}
-                y={zoom * (Math.min(nodes[edge.from].y, nodes[edge.to].y) + textOffsetY + textShiftY - viewPos.y)}
-                width={zoom * (Math.abs(dx) + 2 * radius)}
-                height={zoom * (Math.abs(dy) + 2 * radius)}
-                align='center'
-                verticalAlign='middle'
-                text={edge.events.join(', ')}
-                fontSize={zoom * fontSize}
-                listening={false}
-                rotation={dx >= 0 ? arrowAngle / Math.PI * 180 : arrowAngle / Math.PI * 180 + 180}
-                offsetX={zoom * textOffsetX}
-                offsetY={zoom * textOffsetY}
-              />
-            </Group>
             );
           })}
+          {curEdgeIdx !== undefined && (
+            <Edge
+              edge={edges[curEdgeIdx]}
+              fontSize={fontSize}
+              radius={radius}
+              viewPos={viewPos}
+              zoom={zoom}
+              isSelected={selected?.type === 'edge' && curEdgeIdx === selected.idx}
+              color='deepskyblue'
+              nodes={nodes}
+              selectEdge={selectEdge(curEdgeIdx)}
+              editEdge={editEdge(curEdgeIdx)}
+              scale={1.5}
+            />
+          )}
+
           {nodes?.map((node, idx) => (
-            <Group key={idx} x={zoom * (node.x - viewPos.x)} y={zoom * (node.y - viewPos.y)} draggable={selected?.type === 'node' && idx === selected.idx} onDragStart={dragNodeStart(idx)} onDragMove={dragNodeMove(idx)} onDragEnd={dragNodeEnd(idx)} onPointerDblClick={editNode(idx)} onPointerClick={selectNode(idx)} onPointerDown={pointerDownNode(idx)} onPointerUp={pointerUpNode(idx)} visible={node.visible}>
-              <Circle x={zoom * radius} y={zoom * radius} radius={zoom * radius} fill={runPanelOpen ? (idx === curNode ? 'deepskyblue' : (runHistory?.includes(idx) ? 'gold' : 'lightyellow')) : 'gold'} shadowBlur={selected?.type === 'node' && idx === selected.idx ? 20 : 0} stroke='black' strokeWidth={2} />
-              {idx === entryNode && (
-                <Circle x={zoom * radius} y={zoom * radius} radius={zoom * (radius * 0.9)} stroke='black' strokeWidth={2} />
-              )}
-              <Text text={node.name} fontSize={zoom * fontSize} width={zoom * radius * 2} height={zoom * radius * 2} align='center' verticalAlign='middle' listening={false} />
-            </Group>
+            <Node
+              key={idx}
+              node={node}
+              radius={radius}
+              fill={runPanelOpen ? (idx === curNode ? 'deepskyblue' : (runHistory?.includes(idx) ? 'gold' : 'lightyellow')) : 'gold'}
+              fontSize={fontSize}
+              stroke='black'
+              viewPos={viewPos}
+              zoom={zoom}
+              isSelected={selected?.type === 'node' && idx === selected.idx}
+              dragNodeStart={dragNodeStart(idx)}
+              dragNodeMove={dragNodeMove(idx)}
+              dragNodeEnd={dragNodeEnd(idx)}
+              editNode={editNode(idx)}
+              selectNode={selectNode(idx)}
+              pointerDownNode={pointerDownNode(idx)}
+              pointerUpNode={pointerUpNode(idx)}
+              doubleStroke={idx === entryNode}
+            />
           ))}
 
           <Html>
@@ -734,6 +890,9 @@ export default function EditorPage() {
                 <DropdownItem toggle={false} id='menuClear' onClick={clearData}>
                   <MdDeleteSweep />
                 </DropdownItem>
+                <DropdownItem toggle={false} id='menuFit' onClick={fitScreen}>
+                  <MdFitScreen />
+                </DropdownItem>
                 <DropdownItem toggle={false} id='menuGrid' onClick={() => setAlignGrid(state => !state)}>
                   {alignGrid ? <MdGridOn /> : <MdGridOff />}
                 </DropdownItem>
@@ -760,6 +919,9 @@ export default function EditorPage() {
               </UncontrolledTooltip>
               <UncontrolledTooltip placement='left' target='menuClear'>
                 Clear all
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuFit'>
+                Fit screen
               </UncontrolledTooltip>
               <UncontrolledTooltip placement='left' target='menuGrid'>
                 Toggle alignment to integer coordinates

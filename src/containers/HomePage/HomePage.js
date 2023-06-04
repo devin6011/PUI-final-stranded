@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { FaHeart } from 'react-icons/fa'
 import { useOutletContext, useNavigate } from 'react-router-dom';
+
+import ExampleImage from '../../assets/Example1.png'
 
 export default function HomePage() {
   // TODO: add example image
@@ -20,9 +21,13 @@ export default function HomePage() {
       <>
         <h2 className='fs-1'>Stranded</h2>
         <h3>State Transition Diagram Editor</h3>
-        <span className='fs-4' ><FaHeart /> Login to start <FaHeart /></span>
+        <div className='d-flex justify-content-center'>
+          <img src={ExampleImage} className='w-75' alt='' ></img>
+        </div>
 
-        <AuthButton />
+        <div className='mb-5'>
+          <AuthButton />
+        </div>
       </>
     )}
     </main>
