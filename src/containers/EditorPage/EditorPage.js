@@ -54,7 +54,7 @@ const union = (setA, setB) => {
   return _union;
 }
 
-function Node({ viewPos, zoom, node, isSelected, dragNodeStart, dragNodeMove, dragNodeEnd, editNode, selectNode, pointerDownNode, pointerUpNode, radius, fill, stroke, doubleStroke, fontSize }) {
+export function Node({ viewPos, zoom, node, isSelected, dragNodeStart, dragNodeMove, dragNodeEnd, editNode, selectNode, pointerDownNode, pointerUpNode, radius, fill, stroke, doubleStroke, fontSize }) {
   return (
     <Group
       x={zoom * (node.x - viewPos.x)}
@@ -116,7 +116,7 @@ function DrawingEdge({ viewPos, zoom, drawingEdge, color, opacity }) {
   );
 }
 
-function Edge({ edge, fontSize, radius, viewPos, zoom, isSelected, color, nodes, selectEdge, editEdge, scale }) {
+export function Edge({ edge, fontSize, radius, viewPos, zoom, isSelected, color, nodes, selectEdge, editEdge, scale }) {
   const dx = nodes[edge.to].x - nodes[edge.from].x;
   const dy = nodes[edge.to].y - nodes[edge.from].y;
   const arrowAngle = Math.atan2(dy, dx);
