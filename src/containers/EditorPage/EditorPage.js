@@ -1,6 +1,8 @@
 import './EditorPage.css';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
   Button,
   Dropdown,
@@ -166,6 +168,88 @@ function Edge({ edge, fontSize, radius, viewPos, zoom, isSelected, color, nodes,
   );
 }
 
+function EventQueueItem({ id, name, color, findEventQueueItem, moveEventQueueItem, removeEventQueueItem }) {
+  const [{ isDragging }, drag] = useDrag(
+    () => ({
+      type: 'eventQueueItem',
+      item: { id },
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+      end: (item, monitor) => {
+        const { id: droppedId } = item;
+        const didDrop = monitor.didDrop();
+        if(!didDrop) {
+          removeEventQueueItem(droppedId);
+        }
+      },
+    }),
+    [id, moveEventQueueItem],
+  );
+
+  const [, drop] = useDrop(
+    () => ({
+      accept: 'eventQueueItem',
+      hover({ id: draggedId }) {
+        if(draggedId !== id) {
+          const { idx: overIdx } = findEventQueueItem(id);
+          moveEventQueueItem(draggedId, overIdx);
+        }
+      },
+    }),
+    [findEventQueueItem, moveEventQueueItem],
+  );
+
+  return (
+    <Button innerRef={node => drag(drop(node))} className='EventButton text-truncate' color={color} style={{opacity: isDragging ? 0 : 1}}>
+      {name}
+    </Button>
+  );
+}
+
+function EventQueue({ eventQueue, setEventQueue, curEventIdx, eventQueueRef }) {
+  const [, drop] = useDrop(() => ({ accept: 'eventQueueItem' }));
+
+  const findEventQueueItem = useCallback(
+    id => {
+      const event = eventQueue.find(e => e.id === id);
+      return { event, idx: eventQueue.indexOf(event) };
+    },
+    [eventQueue],
+  );
+
+  const moveEventQueueItem = useCallback(
+    (id, toIdx) => {
+      const { event, idx } = findEventQueueItem(id);
+      const newQueue = [...eventQueue];
+      newQueue.splice(idx, 1);
+      newQueue.splice(toIdx, 0, event);
+      setEventQueue(queue => newQueue);
+    },
+    [findEventQueueItem, eventQueue, setEventQueue],
+  );
+
+  const removeEventQueueItem = useCallback(
+    (id) => {
+      const { idx } = findEventQueueItem(id);
+      const newQueue = [...eventQueue];
+      newQueue.splice(idx, 1);
+      setEventQueue(queue => newQueue);
+    },
+    [findEventQueueItem, eventQueue, setEventQueue],
+  );
+
+  return (
+    <section ref={drop} className='border-top border-1' style={{height: '80px'}}>
+      <div ref={eventQueueRef} className='EventContainer d-grid align-items-center gap-1 p-2 overflow-auto'>
+      {eventQueue.map((event, idx) => (
+        <EventQueueItem key={event.id} id={event.id} name={event.name} findEventQueueItem={findEventQueueItem} moveEventQueueItem={moveEventQueueItem} removeEventQueueItem={removeEventQueueItem} color={idx < curEventIdx ? 'success' : idx === curEventIdx ? 'primary' : 'secondary'} />
+      ))}
+      </div>
+    </section>
+  );
+}
+
 export default function EditorPage() {
   const { projectId } = useParams();
   const { user, userData, setUserData, toggleModal, setModalData, toggleInfoModal} = useOutletContext();
@@ -196,6 +280,7 @@ export default function EditorPage() {
 
   const [runPanelOpen, setRunPanelOpen] = useState(false);
   const [eventQueue, setEventQueue] = useState([]);
+  const [eventQueueNextId, setEventQueueNextId] = useState(0);
   const [curEventIdx, setCurEventIdx] = useState(-1);
   const [curNode, setCurNode] = useState(null);
   const [runHistory, setRunHistory] = useState([]);
@@ -679,13 +764,13 @@ export default function EditorPage() {
     let cur = curEventIdx === -1 ? entryNode : curNode;
     if(cur === null) return;
 
-    let event = eventQueue[curEventIdx + 1];
+    let event = eventQueue[curEventIdx + 1].name;
 
     const nextNodes = [];
 
     for(const edgeIdx of nodes[cur].adj) {
       const edge = edges[edgeIdx];
-      if(edge.events.includes(event)) {
+      if(edge.visible && nodes[edge.to].visible && edge.events.includes(event)) {
         nextNodes.push(edge.to);
       }
     }
@@ -750,7 +835,7 @@ export default function EditorPage() {
   let curEdgeIdx;
   if(runPanelOpen) {
     curEdgeIdx = edges?.findIndex(edge => edge.to === curNode && edge.from === runHistory[runHistory.length - 1]);
-    curEdgeIdx = curEdgeIdx == -1 ? undefined : curEdgeIdx;
+    curEdgeIdx = curEdgeIdx === -1 ? undefined : curEdgeIdx;
   }
 
   return (
@@ -778,7 +863,7 @@ export default function EditorPage() {
             />
           )}
           {edges?.map((edge, idx) => {
-            if(idx === curEdgeIdx) return;
+            if(idx === curEdgeIdx) return null;
             return (
               <Edge
                 key={idx}
@@ -934,16 +1019,15 @@ export default function EditorPage() {
                   </Button>
                 </div>
               </section>
-              <section className='EventContainer border-top border-1 d-grid align-items-center gap-1 p-2 overflow-auto' ref={eventQueueRef} style={{height: '80px'}}>
-              {eventQueue.map((event, idx) => (
-                <Button key={idx} className='EventButton text-truncate' color={idx < curEventIdx ? 'success' : idx === curEventIdx ? 'primary' : 'secondary'}>
-                  {event}
-                </Button>
-              ))}
-              </section>
+              <DndProvider backend={HTML5Backend}>
+                <EventQueue eventQueueRef={eventQueueRef} eventQueue={eventQueue} setEventQueue={(x) => {setEventQueue(x); restartEventRunner(entryNode);}} curEventIdx={curEventIdx} />
+              </DndProvider>
               <section className='EventContainer border-top border-1 d-grid align-items-center gap-1 p-2 overflow-auto' style={{height: '80px'}}>
               {events && [...events].map((event, idx) => (
-                <Button key={idx} className='EventButton text-truncate' onClick={() => setEventQueue(queue => queue.concat([event]))}>
+                <Button key={idx} className='EventButton text-truncate' onClick={() => {
+                  setEventQueue(queue => queue.concat([{id: eventQueueNextId, name: event}]));
+                  setEventQueueNextId(id => id + 1);
+                }}>
                   {event}
                 </Button>
               ))}
