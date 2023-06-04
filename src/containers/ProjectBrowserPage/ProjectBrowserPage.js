@@ -23,19 +23,11 @@ import {
 
 import ExampleImage from '../../assets/Example1.png';
 
-function CreateProjectCard({ onClick }) {
+function CreateProjectButton({ onClick }) {
   return (
-    <Card className='CreateProjectCard' role='button' onClick={onClick}>
-      <div className='d-flex justify-content-center'>
-        <img src={ExampleImage} alt='' width={300}></img>
-      </div>
-      <CardBody className='d-flex align-items-center justify-content-center'>
-        <CardTitle tag='h3' className='d-flex align-items-center gap-2'>
-          <FaPlus />
-          New Project
-        </CardTitle>
-      </CardBody>
-    </Card>
+    <div className='d-inline-block border border-1 shadow mb-3 p-2' role='button' onClick={onClick}>
+      <div className='d-flex align-items-center fs-3 gap-2'><FaPlus /> New Project</div>
+    </div>
   );
 }
 
@@ -49,49 +41,51 @@ function ProjectCard({ project, deleteProject, editProjectName, editProjectDescr
   };
 
   return (
-    <Card className='ProjectCard'>
-      <div className='d-flex justify-content-center pe-none'>
-        <Stage height={250} width={300}>
-          <Layer>
-            {project.graph.edges.map((edge, idx) => (
-              <Edge
-                key={idx}
-                edge={edge}
-                fontSize={fontSize}
-                radius={radius}
-                viewPos={viewPos}
-                zoom={zoom}
-                isSelected={false}
-                color='black'
-                nodes={project.graph.nodes}
-                selectEdge={() => {}}
-                editEdge={() => {}}
-              />
-            ))}
+    <Card>
+      <Link to={`/edit/${project.id}`}>
+        <div className='d-flex justify-content-center pe-none'>
+          <Stage height={250} width={300}>
+            <Layer>
+              {project.graph.edges.map((edge, idx) => (
+                <Edge
+                  key={idx}
+                  edge={edge}
+                  fontSize={fontSize}
+                  radius={radius}
+                  viewPos={viewPos}
+                  zoom={zoom}
+                  isSelected={false}
+                  color='black'
+                  nodes={project.graph.nodes}
+                  selectEdge={() => {}}
+                  editEdge={() => {}}
+                />
+              ))}
 
-            {project.graph.nodes.map((node, idx) => (
-              <Node
-                key={idx}
-                node={node}
-                radius={radius}
-                fill='gold'
-                fontSize={fontSize}
-                viewPos={viewPos}
-                zoom={zoom}
-                isSelected={false}
-                dragNodeStart={() => {}}
-                dragNodeMove={() => {}}
-                dragNodeEnd={() => {}}
-                editNode={() => {}}
-                selectNode={() => {}}
-                pointerDownNode={() => {}}
-                pointerUpNode={() => {}}
-                doubleStroke={idx === project.entryNode}
-              />
-            ))}
-          </Layer>
-        </Stage>
-      </div>
+              {project.graph.nodes.map((node, idx) => (
+                <Node
+                  key={idx}
+                  node={node}
+                  radius={radius}
+                  fill='gold'
+                  fontSize={fontSize}
+                  viewPos={viewPos}
+                  zoom={zoom}
+                  isSelected={false}
+                  dragNodeStart={() => {}}
+                  dragNodeMove={() => {}}
+                  dragNodeEnd={() => {}}
+                  editNode={() => {}}
+                  selectNode={() => {}}
+                  pointerDownNode={() => {}}
+                  pointerUpNode={() => {}}
+                  doubleStroke={idx === project.entryNode}
+                />
+              ))}
+            </Layer>
+          </Stage>
+        </div>
+      </Link>
       <CardBody className='d-flex flex-column align-items-start text-break'>
         <CardTitle tag='h3' contentEditable={true} suppressContentEditableWarning={true} onBlur={e => editProjectName(e.target.innerText)}>
           {project.projectName}
@@ -253,8 +247,8 @@ export default function ProjectBrowserPage() {
   return (
     <main className='p-5'>
       <h2 className='pb-4'>Browse your projects</h2>
+      <CreateProjectButton onClick={toggleCreateNewProjectModal} />
       <section className='ProjectBrowser d-grid gap-3'>
-        <CreateProjectCard onClick={toggleCreateNewProjectModal} />
         {projects?.map(project => (
           <ProjectCard project={project} deleteProject={() => toggleDeleteProjectModal(project.id, project.projectName)} editProjectName={editProjectName(project.id)} editProjectDescription={editProjectDescription(project.id)} key={project.id} />
         ))}
