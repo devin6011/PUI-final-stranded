@@ -286,6 +286,7 @@ export default function EditorPage() {
   const [curEventIdx, setCurEventIdx] = useState(-1);
   const [curNode, setCurNode] = useState(null);
   const [runHistory, setRunHistory] = useState([]);
+  const [runJobCnt, setRunJobCnt] = useState(0);
   const [autoRun, setAutoRun] = useState(null);
   const eventQueueRef = useRef(null);
 
@@ -323,6 +324,7 @@ export default function EditorPage() {
     setCurNode(newEntryNode);
     setRunHistory([]);
     setAutoRun(false);
+    setRunJobCnt(0);
   }, []);
 
   useEffect(() => {
@@ -776,7 +778,7 @@ export default function EditorPage() {
     setRunPanelOpen(state => !state);
   };
 
-  const runOneEvent = () => {
+  const runOneEvent = useCallback(() => {
     if(curEventIdx + 1 >= eventQueue.length) return;
     let cur = curEventIdx === -1 ? entryNode : curNode;
     if(cur === null) return;
@@ -797,7 +799,14 @@ export default function EditorPage() {
     setCurNode(nextNode);
     setRunHistory(history => history.concat([curNode]));
     setCurEventIdx(idx => idx + 1);
-  };
+  }, [curEventIdx, eventQueue, entryNode, curNode, nodes, edges]);
+
+  useEffect(() => {
+    if(runJobCnt >= 1) {
+      runOneEvent();
+      setRunJobCnt(cnt => cnt - 1);
+    }
+  }, [runJobCnt, runOneEvent]);
 
   const undoEvent = () => {
     if(curEventIdx <= -1) return;
@@ -805,24 +814,15 @@ export default function EditorPage() {
     setRunHistory(history => history.slice(0, -1));
     setCurEventIdx(idx => idx - 1);
   };
-  
-  /*
-   * doesn't work because of multiple setstate
-  const runAllEvent = () => {
-    for(let i = curEventIdx; i + 1 < eventQueue.length; i++) {
-      runOneEvent();
-    }
-  };
-  */
 
   useEffect(() => {
     if(autoRun) {
-      const id = setTimeout(() => {
-        runOneEvent();
+      const id = setInterval(() => {
+        setRunJobCnt(cnt => cnt + 1);
       }, 500);
-      return () => clearTimeout(id);
+      return () => clearInterval(id);
     }
-  });
+  }, [autoRun]);
 
   useEffect(() => {
     const curEventNode = eventQueueRef?.current?.childNodes?.[curEventIdx];
@@ -1014,15 +1014,15 @@ export default function EditorPage() {
                   <Button color='light' size='sm' id='panelUndo' onClick={undoEvent}>
                     <MdUndo />
                   </Button>
-                  <Button color='light' size='sm' id='panelRedo' onClick={runOneEvent}>
+                  <Button color='light' size='sm' id='panelRedo' onClick={() => setRunJobCnt(cnt => cnt + 1)}>
                     <MdRedo />
                   </Button>
                   <Button color='light' size='sm' id='panelRestart' onClick={() => restartEventRunner(entryNode)}>
                     <MdSkipPrevious />
                   </Button>
-                  {/*<Button color='light' size='sm' id='panelRunAll' onClick={runAllEvent}>
+                  <Button color='light' size='sm' id='panelRunAll' onClick={() => setRunJobCnt(cnt => cnt + (eventQueue.length - curEventIdx - 1))}>
                     <MdSkipNext />
-                  </Button>*/}
+                  </Button>
                   <Button color='light' size='sm' id='panelClear' onClick={clearEvent}>
                     <MdDeleteSweep />
                   </Button>
@@ -1061,9 +1061,9 @@ export default function EditorPage() {
               <UncontrolledTooltip placement='top' target='panelRestart'>
                 Restart
               </UncontrolledTooltip>
-              {/*<UncontrolledTooltip placement='top' target='panelRunAll'>
+              <UncontrolledTooltip placement='top' target='panelRunAll'>
                 Run all events
-              </UncontrolledTooltip>*/}
+              </UncontrolledTooltip>
               <UncontrolledTooltip placement='top' target='panelClear'>
                 Clear the event queue
               </UncontrolledTooltip>

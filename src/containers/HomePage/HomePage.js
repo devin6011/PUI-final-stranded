@@ -4,8 +4,6 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import ExampleImage from '../../assets/Example1.png'
 
 export default function HomePage() {
-  // TODO: add example image
-  // TODO: give a better look
   const { AuthButton, user } = useOutletContext();
   const navigate = useNavigate();
 

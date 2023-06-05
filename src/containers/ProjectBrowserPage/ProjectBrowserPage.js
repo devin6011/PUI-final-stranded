@@ -21,8 +21,6 @@ import {
   Edge,
 } from '../../containers/EditorPage/EditorPage';
 
-import ExampleImage from '../../assets/Example1.png';
-
 function CreateProjectButton({ onClick }) {
   return (
     <div className='d-inline-block border border-1 shadow mb-3 p-2' role='button' onClick={onClick}>
