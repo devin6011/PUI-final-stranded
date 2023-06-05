@@ -243,7 +243,7 @@ function EventQueue({ eventQueue, setEventQueue, curEventIdx, eventQueueRef }) {
 
   return (
     <section ref={drop} className='border-top border-1 d-flex align-items-center' style={{height: '80px'}}>
-      <div ref={eventQueueRef} className='EventContainer d-grid align-items-center gap-1 p-2 overflow-auto'>
+      <div ref={eventQueueRef} className='d-flex align-items-center gap-1 p-2 overflow-auto'>
       {eventQueue.map((event, idx) => (
         <EventQueueItem key={event.id} id={event.id} name={event.name} findEventQueueItem={findEventQueueItem} moveEventQueueItem={moveEventQueueItem} removeEventQueueItem={removeEventQueueItem} color={idx < curEventIdx ? 'success' : idx === curEventIdx ? 'primary' : 'secondary'} />
       ))}
@@ -941,7 +941,7 @@ export default function EditorPage() {
               toggle={() => setMenuOpen(state => !state)}
               direction='up'
               className='position-absolute'
-              style={{top: runPanelOpen ? canvasHeight - 220 - 100 : canvasHeight-100, left: canvasWidth-100}}
+              style={{top: runPanelOpen ? canvasHeight - 220 - Math.max(60, canvasHeight * 0.1) : canvasHeight - Math.max(60, canvasHeight * 0.1), left: canvasWidth - Math.max(60, canvasHeight * 0.1)}}
             >
               <DropdownToggle color='light'><FaBars /></DropdownToggle>
               <DropdownMenu style={{minWidth: 0}}>
@@ -1039,7 +1039,7 @@ export default function EditorPage() {
               <DndProvider backend={HTML5Backend}>
                 <EventQueue eventQueueRef={eventQueueRef} eventQueue={eventQueue} setEventQueue={(x) => {setEventQueue(x); restartEventRunner(entryNode);}} curEventIdx={curEventIdx} />
               </DndProvider>
-              <section className='EventContainer border-top border-1 d-grid align-items-center gap-1 p-2 overflow-auto' style={{height: '80px'}}>
+              <section className='border-top border-1 d-flex align-items-center gap-1 p-2 overflow-auto' style={{height: '80px'}}>
               {events && [...events].map((event, idx) => (
                 <Button key={idx} className='EventButton text-truncate' onClick={() => {
                   setEventQueue(queue => queue.concat([{id: eventQueueNextId, name: event}]));
