@@ -76,7 +76,7 @@ export function Node({ viewPos, zoom, node, isSelected, dragNodeStart, dragNodeM
         fill={fill}
         shadowBlur={isSelected ? 20 : 0}
         stroke={stroke}
-        strokeWidth={2}
+        strokeWidth={2 * zoom}
       />
       {doubleStroke && (
         <Circle
@@ -84,7 +84,8 @@ export function Node({ viewPos, zoom, node, isSelected, dragNodeStart, dragNodeM
           y={zoom * radius}
           radius={zoom * (radius * 0.9)}
           stroke={stroke}
-          strokeWidth={2}
+          strokeWidth={2 * zoom}
+          listening={false}
         />
       )}
       <Text
@@ -112,6 +113,7 @@ function DrawingEdge({ viewPos, zoom, drawingEdge, color, opacity }) {
       stroke={color}
       strokeWidth={2 * zoom}
       opacity={opacity}
+      listening={false}
     />
   );
 }
@@ -854,7 +856,7 @@ export default function EditorPage() {
   }
 
   return (
-    <main ref={mainRef}>
+    <main ref={mainRef} style={{touchAction: 'none'}}>
     {!userData?.[projectId] ?
       <h2 className='m-3'>This project ID is invalid!</h2>
       :
