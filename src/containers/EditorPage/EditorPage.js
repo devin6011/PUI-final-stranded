@@ -1,8 +1,9 @@
 import './EditorPage.css';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useDrag, useDrop } from 'react-dnd';
+import { DndProvider, Preview } from 'react-dnd-multi-backend';
+import { HTML5toTouch } from 'rdndmb-html5-to-touch';
 import {
   Button,
   Dropdown,
@@ -174,7 +175,7 @@ function EventQueueItem({ id, name, color, findEventQueueItem, moveEventQueueIte
   const [{ isDragging }, drag] = useDrag(
     () => ({
       type: 'eventQueueItem',
-      item: { id },
+      item: { id, name, color },
       collect: (monitor) => ({
         isDragging: monitor.isDragging(),
       }),
@@ -186,7 +187,7 @@ function EventQueueItem({ id, name, color, findEventQueueItem, moveEventQueueIte
         }
       },
     }),
-    [id, moveEventQueueItem],
+    [id, name, color, removeEventQueueItem],
   );
 
   const [, drop] = useDrop(
@@ -209,7 +210,7 @@ function EventQueueItem({ id, name, color, findEventQueueItem, moveEventQueueIte
   );
 }
 
-function EventQueue({ eventQueue, setEventQueue, curEventIdx, eventQueueRef }) {
+function EventQueue({ eventQueue, setEventQueue, curEventIdx, eventQueueRef, canvasHeight }) {
   const [, drop] = useDrop(() => ({ accept: 'eventQueueItem' }));
 
   const findEventQueueItem = useCallback(
@@ -248,6 +249,13 @@ function EventQueue({ eventQueue, setEventQueue, curEventIdx, eventQueueRef }) {
         <EventQueueItem key={event.id} id={event.id} name={event.name} findEventQueueItem={findEventQueueItem} moveEventQueueItem={moveEventQueueItem} removeEventQueueItem={removeEventQueueItem} color={idx < curEventIdx ? 'success' : idx === curEventIdx ? 'primary' : 'secondary'} />
       ))}
       </div>
+      <Preview>
+        {({ item, style }) => (
+          <Button className='EventButtonDragged text-truncate' color={item.color} style={{...style, opacity: 0.5, top: -(window.innerHeight - canvasHeight)}}>
+            {item.name}
+          </Button>
+        )}
+      </Preview>
     </section>
   );
 }
@@ -1036,8 +1044,8 @@ export default function EditorPage() {
                   </Button>
                 </div>
               </section>
-              <DndProvider backend={HTML5Backend}>
-                <EventQueue eventQueueRef={eventQueueRef} eventQueue={eventQueue} setEventQueue={(x) => {setEventQueue(x); restartEventRunner(entryNode);}} curEventIdx={curEventIdx} />
+              <DndProvider options={HTML5toTouch}>
+                <EventQueue eventQueueRef={eventQueueRef} eventQueue={eventQueue} setEventQueue={(x) => {setEventQueue(x); restartEventRunner(entryNode);}} curEventIdx={curEventIdx} canvasHeight={canvasHeight} />
               </DndProvider>
               <section className='border-top border-1 d-flex align-items-center gap-1 p-2 overflow-auto' style={{height: '80px'}}>
               {events && [...events].map((event, idx) => (

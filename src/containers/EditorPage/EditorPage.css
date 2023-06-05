@@ -8,12 +8,20 @@
   min-width: 150px;
 }
 
+.EventButtonDragged {
+  min-width: 150px;
+}
+
 @media (max-width: 600px) {
   .EventButton {
     width: 100px;
   }
 
   .EventButton:hover {
+    min-width: 100px;
+  }
+
+  .EventButtonDragged {
     min-width: 100px;
   }
 }
@@ -24,6 +32,10 @@
   }
 
   .EventButton:hover {
+    min-width: 80px;
+  }
+
+  .EventButtonDragged {
     min-width: 80px;
   }
 }
