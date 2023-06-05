@@ -1048,7 +1048,7 @@ export default function EditorPage() {
               ))}
               </section>
               <UncontrolledTooltip placement='top' target='panelRun'>
-                {autoRun ? 'Run the events' : 'Pause'}
+                {autoRun ? 'Pause' : 'Run the events'}
               </UncontrolledTooltip>
               <UncontrolledTooltip placement='top' target='panelUndo'>
                 Undo one event
