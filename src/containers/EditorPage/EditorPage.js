@@ -538,7 +538,10 @@ export default function EditorPage() {
     }
     else if(currentPointerEventCnt === 2) {
       setPointerEventStartData({
+        ...pointerEventStartData,
         type: 'pinchZoom',
+        pointerX: Object.values(pointerEvents)[0].evt.offsetX,
+        pointerY: Object.values(pointerEvents)[0].evt.offsetY,
         pointerX2: e.evt.offsetX,
         pointerY2: e.evt.offsetY,
         viewPosX: viewPos.x,
@@ -588,7 +591,7 @@ export default function EditorPage() {
     else if(currentPointerEventCnt === 2) {
       if(pointerEventStartData?.type === 'pinchZoom') {
         const {
-          pointerId1: id1,
+          pointerId: id1,
           pointerId2: id2,
           pointerX: startX1,
           pointerY: startY1,
@@ -611,8 +614,8 @@ export default function EditorPage() {
         const midpointPreY = (startY1 + startY2) / 2;
         const midpointCurX = (curEvt1.evt.offsetX + curEvt2.evt.offsetX) / 2;
         const midpointCurY = (curEvt1.evt.offsetY + curEvt2.evt.offsetY) / 2;
-        const newViewPosX = midpointPreX / zoom - midpointCurX / newZoom + viewPosPreX;
-        const newViewPosY = midpointPreY / zoom - midpointCurY / newZoom + viewPosPreY;
+        const newViewPosX = midpointPreX / zoomPre - midpointCurX / newZoom + viewPosPreX;
+        const newViewPosY = midpointPreY / zoomPre - midpointCurY / newZoom + viewPosPreY;
 
         setZoom(newZoom);
         setViewPos({
@@ -647,6 +650,11 @@ export default function EditorPage() {
     if(currentPointerEventCnt === 1 && (selected?.type !== 'node' || selected?.idx !== idx)) {
       setPointerEventStartData({
         type: 'node',
+        pointerX: e.evt.offsetX,
+        pointerY: e.evt.offsetY,
+        viewPosX: viewPos.x,
+        viewPosY: viewPos.y,
+        pointerId: e.pointerId,
       });
       setDrawingEdge({
         from: idx,
