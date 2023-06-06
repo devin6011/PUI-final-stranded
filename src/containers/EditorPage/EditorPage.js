@@ -276,7 +276,8 @@ export default function EditorPage() {
   const [events, setEvents] = useState(null);
   const [entryNode, setEntryNode] = useState(null);
 
-  const [eventStartData, setEventStartData] = useState(null);
+  const [pointerEventStartData, setPointerEventStartData] = useState(null);
+  const [pointerEvents, setPointerEvents] = useState({});
   const [selected, setSelected] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [drawingEdge, setDrawingEdge] = useState(null);
@@ -518,43 +519,133 @@ export default function EditorPage() {
   }, [zoom, setZoom, viewPos, setViewPos]);
   
   const pointerDownCanvas = e => {
-    setEventStartData({
-      type: 'canvas',
-      pointerX: e.evt.offsetX,
-      pointerY: e.evt.offsetY,
-      viewPosX: viewPos.x,
-      viewPosY: viewPos.y,
-    });
+    const currentPointerEvents = {
+      ...pointerEvents,
+      [e.pointerId]: e,
+    };
+    const currentPointerEventCnt = Object.keys(currentPointerEvents).length;
+
+    if(currentPointerEventCnt === 1) {
+      setPointerEventStartData({
+        type: 'canvas',
+        pointerX: e.evt.offsetX,
+        pointerY: e.evt.offsetY,
+        viewPosX: viewPos.x,
+        viewPosY: viewPos.y,
+        pointerId: e.pointerId,
+      });
+    }
+    else if(currentPointerEventCnt === 2) {
+      setPointerEventStartData({
+        type: 'pinchZoom',
+        pointerX2: e.evt.offsetX,
+        pointerY2: e.evt.offsetY,
+        viewPosX: viewPos.x,
+        viewPosY: viewPos.y,
+        pointerId2: e.pointerId,
+        zoom,
+      });
+      setDrawingEdge(null);
+    }
+    else {
+      setDrawingEdge(null);
+    }
+
+    setPointerEvents(events => ({
+      ...events,
+      [e.pointerId]: e,
+    }));
   };
   
   const pointerMoveCanvas = e => {
-    if(eventStartData?.type === 'canvas') {
-      const deltaX = e.evt.offsetX - eventStartData.pointerX;
-      const deltaY = e.evt.offsetY - eventStartData.pointerY;
-      setViewPos({
-        x: eventStartData.viewPosX - deltaX / zoom,
-        y: eventStartData.viewPosY - deltaY / zoom,
-      });
+    if(!(e.pointerId in pointerEvents)) return;
+    const currentPointerEvents = {
+      ...pointerEvents,
+      [e.pointerId]: e,
+    };
+    const currentPointerEventCnt = Object.keys(currentPointerEvents).length;
+
+    if(currentPointerEventCnt === 1) {
+      if(pointerEventStartData?.type === 'canvas') {
+        const deltaX = e.evt.offsetX - pointerEventStartData.pointerX;
+        const deltaY = e.evt.offsetY - pointerEventStartData.pointerY;
+        setViewPos({
+          x: pointerEventStartData.viewPosX - deltaX / zoom,
+          y: pointerEventStartData.viewPosY - deltaY / zoom,
+        });
+      }
+      else if(pointerEventStartData?.type === 'node') {
+        if(drawingEdge !== null) {
+          setDrawingEdge({
+            ...drawingEdge,
+            toX: e.evt.offsetX / zoom + viewPos.x,
+            toY: e.evt.offsetY / zoom + viewPos.y,
+          });
+        }
+      }
     }
-    else if(eventStartData?.type === 'node') {
-      setDrawingEdge({
-        ...drawingEdge,
-        toX: e.evt.offsetX / zoom + viewPos.x,
-        toY: e.evt.offsetY / zoom + viewPos.y,
-      });
+    else if(currentPointerEventCnt === 2) {
+      if(pointerEventStartData?.type === 'pinchZoom') {
+        const {
+          pointerId1: id1,
+          pointerId2: id2,
+          pointerX: startX1,
+          pointerY: startY1,
+          pointerX2: startX2,
+          pointerY2: startY2,
+          zoom: zoomPre,
+          viewPosX: viewPosPreX,
+          viewPosY: viewPosPreY,
+        } = pointerEventStartData;
+        const { [id1]: curEvt1, [id2]: curEvt2 } = currentPointerEvents;
+        const dxPre = startX2 - startX1;
+        const dyPre = startY2 - startY1;
+        const dxCur = curEvt2.evt.offsetX - curEvt1.evt.offsetX;
+        const dyCur = curEvt2.evt.offsetY - curEvt1.evt.offsetY;
+        const disPre = Math.hypot(dxPre, dyPre);
+        const disCur = Math.hypot(dxCur, dyCur);
+        const newZoom = zoomPre * (disCur / disPre);
+
+        const midpointPreX = (startX1 + startX2) / 2;
+        const midpointPreY = (startY1 + startY2) / 2;
+        const midpointCurX = (curEvt1.evt.offsetX + curEvt2.evt.offsetX) / 2;
+        const midpointCurY = (curEvt1.evt.offsetY + curEvt2.evt.offsetY) / 2;
+        const newViewPosX = midpointPreX / zoom - midpointCurX / newZoom + viewPosPreX;
+        const newViewPosY = midpointPreY / zoom - midpointCurY / newZoom + viewPosPreY;
+
+        setZoom(newZoom);
+        setViewPos({
+          x: newViewPosX,
+          y: newViewPosY,
+        });
+      }
     }
+    setPointerEvents(events => ({
+      ...events,
+      [e.pointerId]: e,
+    }));
   };
 
   const pointerUpCanvas = e => {
-    setEventStartData(null);
+    setPointerEventStartData(null);
     setDrawingEdge(null);
+
+    setPointerEvents(events => {
+      const { [e.pointerId]: removed, ...rest } = events;
+      return rest;
+    });
   };
 
   const pointerDownNode = idx => e => {
-    if(selected?.type !== 'node' || selected?.idx !== idx) {
-      setEventStartData({
+    const currentPointerEvents = {
+      ...pointerEvents,
+      [e.pointerId]: e,
+    };
+    const currentPointerEventCnt = Object.keys(currentPointerEvents).length;
+
+    if(currentPointerEventCnt === 1 && (selected?.type !== 'node' || selected?.idx !== idx)) {
+      setPointerEventStartData({
         type: 'node',
-        nodeIdx: idx,
       });
       setDrawingEdge({
         from: idx,
@@ -564,6 +655,13 @@ export default function EditorPage() {
         toY: e.evt.offsetY / zoom + viewPos.y,
       });
     }
+    if(currentPointerEventCnt > 1) {
+      setDrawingEdge(null);
+    }
+    setPointerEvents(events => ({
+      ...events,
+      [e.pointerId]: e,
+    }));
     e.cancelBubble = true;
   };
 
