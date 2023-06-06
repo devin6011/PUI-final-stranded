@@ -150,6 +150,7 @@ export function Edge({ edge, fontSize, radius, viewPos, zoom, isSelected, color,
       fill={color}
       stroke={color}
       strokeWidth={2 * zoom * (scale ? scale : 1)}
+      hitStrokeWidth={radius * zoom * (scale ? scale : 1)}
       shadowBlur={isSelected ? 20 : 0}
     />
     <Text
