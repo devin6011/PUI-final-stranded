@@ -975,7 +975,7 @@ export default function EditorPage() {
 
   let curEdgeIdx;
   if(runPanelOpen) {
-    curEdgeIdx = edges?.findIndex(edge => edge.to === curNode && edge.from === runHistory[runHistory.length - 1]);
+    curEdgeIdx = edges?.findIndex(edge => edge.visible && edge.to === curNode && edge.from === runHistory[runHistory.length - 1]);
     curEdgeIdx = curEdgeIdx === -1 ? undefined : curEdgeIdx;
   }
 
