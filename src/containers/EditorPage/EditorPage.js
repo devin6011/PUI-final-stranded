@@ -27,10 +27,12 @@ import {
   FaBars,
   FaUndo,
   FaRedo,
-  FaTrash,
   FaSave,
   FaInfo,
   FaBroom,
+  FaFileImage,
+  FaFileImport,
+  FaFileExport,
 } from 'react-icons/fa';
 import {
   MdGridOn,
@@ -53,6 +55,16 @@ const union = (setA, setB) => {
     _union.add(x);
   }
   return _union;
+}
+
+const downloadURL = (uri, name) => {
+  const link = document.createElement('a');
+  link.download = name;
+  link.href = uri;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 export function Node({ viewPos, zoom, node, isSelected, dragNodeStart, dragNodeMove, dragNodeEnd, editNode, selectNode, pointerDownNode, pointerUpNode, radius, fill, stroke, doubleStroke, fontSize }) {
@@ -265,6 +277,7 @@ export default function EditorPage() {
   const { projectId } = useParams();
   const { user, userData, setUserData, toggleModal, setModalData, toggleInfoModal, setInfoModal} = useOutletContext();
   const mainRef = useRef(null);
+  const stageRef = useRef(null);
   const navigate = useNavigate();
 
   const [canvasWidth, setCanvasWidth] = useState(0);
@@ -773,7 +786,7 @@ export default function EditorPage() {
 
   const editNode = idx => e => {
     setModalData({
-      body: 'Edit state',
+      header: 'Edit state',
       inputs: [
         {
           type: 'text',
@@ -803,10 +816,6 @@ export default function EditorPage() {
             toggleModal();
           },
         },
-        {
-          text: 'Close',
-          onClick: toggleModal,
-        },
       ],
     });
     toggleModal();
@@ -815,7 +824,7 @@ export default function EditorPage() {
 
   const editEdge = idx => e => {
     setModalData({
-      body: `Edit edge (${nodes[edges[idx].from].name} → ${nodes[edges[idx].to].name})`,
+      header: `Edit edge (${nodes[edges[idx].from].name} → ${nodes[edges[idx].to].name})`,
       inputs: [
         {
           type: 'text',
@@ -970,6 +979,105 @@ export default function EditorPage() {
     curEdgeIdx = curEdgeIdx === -1 ? undefined : curEdgeIdx;
   }
 
+  const exportImage = () => {
+    const maxCanvasDimension = Math.max(canvasWidth, canvasHeight);
+    const url = stageRef?.current?.toDataURL({
+      pixelRatio: 4000 / maxCanvasDimension,
+    });
+    downloadURL(url, userData?.[projectId]?.projectName);
+  };
+
+  const importData = () => {
+    setModalData({
+      header: 'Import JSON data',
+      body: 'Warning: importing data is not undoable!',
+      inputs: [
+        {
+          type: 'file',
+          accept: '.json,.txt',
+          onChange: (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const jsonData = e.target.result;
+              const data = JSON.parse(jsonData);
+
+              setNodes(data.nodes);
+              setEdges(data.edges);
+              setEntryNode(data.entryNode);
+              setEvents(new Set(data.events));
+              setEventQueue(data.eventQueue.map((event, idx) => ({ id: idx, name: event })));
+              setEventQueueNextId(data.eventQueue.length);
+
+              setHistory([{
+                nodes: data.nodes,
+                edges: data.edges,
+                events: new Set(data.events),
+                entryNode: data.entryNode,
+              }]);
+              setHistoryTime(0);
+              restartEventRunner(data.entryNode);
+            };
+            reader.readAsText(file);
+
+            toggleModal();
+          },
+        }
+      ],
+    });
+    toggleModal();
+  };
+
+  const exportData = () => {
+    // export deleted (invisible) items to keep the indices correct
+    const dataToExport = {
+      nodes: nodes.map(node => ({
+        name: node.name,
+        x: node.x,
+        y: node.y,
+        adj: node.adj,
+        visible: node.visible,
+      })),
+      edges: edges.map(edge => ({
+        from: edge.from,
+        to: edge.to,
+        events: edge.events,
+        visible: edge.visible,
+      })),
+      entryNode,
+      events: [...events],
+      eventQueue: eventQueue.map(event => event.name),
+    };
+    const exportedJSON = JSON.stringify(dataToExport, null, 2);
+
+    setModalData({
+      header: 'Export data as JSON',
+      inputs: [
+        {
+          type: 'textarea',
+          rows: 10,
+          value: exportedJSON,
+          onChange: () => {},
+        },
+      ],
+      buttons: [
+        {
+          text: 'Copy to clipboard',
+          onClick: () => {
+            navigator.clipboard.writeText(exportedJSON);
+          },
+        },
+        {
+          text: 'Download',
+          onClick: () => {
+            downloadURL('data:application/json;charset=utf-8,' + encodeURIComponent(exportedJSON), userData?.[projectId]?.projectName);
+          },
+        },
+      ],
+    });
+    toggleModal();
+  };
+
   return (
     <main ref={mainRef} style={{touchAction: 'none'}}>
     {!userData?.[projectId] ?
@@ -983,6 +1091,7 @@ export default function EditorPage() {
         onPointerDown={pointerDownCanvas}
         onPointerMove={pointerMoveCanvas}
         onPointerUp={pointerUpCanvas}
+        ref={stageRef}
       >
         <Layer>
           {drawingEdge && (
@@ -1066,11 +1175,20 @@ export default function EditorPage() {
                 <DropdownItem toggle={false} id='menuRedo' onClick={redo}>
                   <FaRedo />
                 </DropdownItem>
-                <DropdownItem toggle={false} id='menuDelete' onClick={deleteSelected}>
+                {/*<DropdownItem toggle={false} id='menuDelete' onClick={deleteSelected}>
                   <FaTrash />
-                </DropdownItem>
+                </DropdownItem>*/}
                 <DropdownItem toggle={false} id='menuSave' onClick={saveData}>
                   <FaSave />
+                </DropdownItem>
+                <DropdownItem toggle={false} id='menuImportData' onClick={importData}>
+                  <FaFileImport />
+                </DropdownItem>
+                <DropdownItem toggle={false} id='menuExportData' onClick={exportData}>
+                  <FaFileExport />
+                </DropdownItem>
+                <DropdownItem toggle={false} id='menuExportImage' onClick={exportImage}>
+                  <FaFileImage />
                 </DropdownItem>
                 <DropdownItem toggle={false} id='menuClear' onClick={clearData}>
                   <MdDeleteSweep />
@@ -1096,11 +1214,20 @@ export default function EditorPage() {
               <UncontrolledTooltip placement='left' target='menuRedo'>
                 Redo
               </UncontrolledTooltip>
-              <UncontrolledTooltip placement='left' target='menuDelete'>
+              {/*<UncontrolledTooltip placement='left' target='menuDelete'>
                 Delete selected item
-              </UncontrolledTooltip>
+              </UncontrolledTooltip>*/}
               <UncontrolledTooltip placement='left' target='menuSave'>
                 Save
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuImportData'>
+                Import data
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuExportData'>
+                Export data
+              </UncontrolledTooltip>
+              <UncontrolledTooltip placement='left' target='menuExportImage'>
+                Export to PNG
               </UncontrolledTooltip>
               <UncontrolledTooltip placement='left' target='menuClear'>
                 Clear all

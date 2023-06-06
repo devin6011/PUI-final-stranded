@@ -182,17 +182,13 @@ export default function ProjectBrowserPage() {
             createNewProject();
           },
         },
-        {
-          text: 'Cancel',
-          onClick: toggleModal,
-        },
       ],
     }));
   }, [createNewProject, newProjectName, newProjectDescription, toggleModal, setModalData]);
 
   const toggleCreateNewProjectModal = () => {
     setModalData({
-      body: 'Type in your project information.',
+      header: 'Create project',
       buttons: [
         {
           text: 'Create',
@@ -200,10 +196,6 @@ export default function ProjectBrowserPage() {
             toggleModal();
             createNewProject();
           },
-        },
-        {
-          text: 'Cancel',
-          onClick: toggleModal,
         },
       ],
       inputs: [
@@ -227,14 +219,14 @@ export default function ProjectBrowserPage() {
       body: `Are you sure you want to delete "${name}"?`,
       buttons: [
         {
-          text: 'Delete',
+          text: 'Yes',
           onClick: () => {
             toggleModal();
             deleteProject(projectId);
           },
         },
         {
-          text: 'Cancel',
+          text: 'No',
           onClick: toggleModal,
         },
       ],

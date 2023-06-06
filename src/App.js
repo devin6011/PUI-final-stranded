@@ -7,6 +7,7 @@ import {
   Input,
   Label,
   Modal,
+  ModalHeader,
   ModalBody,
   ModalFooter,
   ListGroup,
@@ -126,16 +127,23 @@ function App() {
         toggle={toggleModal}
         onWheel={e => {e.stopPropagation()}}
       >
+        {modalData?.header && (
+          <ModalHeader toggle={toggleModal}>
+            {modalData?.header}
+          </ModalHeader>
+        )}
         <ModalBody>
           <pre style={{fontSize: '1em', fontFamily: 'system-ui', whiteSpace: 'pre-wrap'}}>{modalData?.body}</pre>
           {modalData?.inputs?.map((input, idx) => (
-            <FormGroup floating key={idx}>
-              <Input type={input.type} onChange={input.onChange} className='my-2' placeholder={input.label} value={input.value}>
+            <FormGroup floating={!!input.label} key={idx}>
+              <Input type={input.type} onChange={input.onChange} className='my-2' placeholder={input.label} value={input.value} rows={input.rows} accept={input.accept}>
                 {input.text}
               </Input>
-              <Label>
-                {input.label}
-              </Label>
+              {input.label && (
+                <Label>
+                  {input.label}
+                </Label>
+              )}
             </FormGroup>
           ))}
         </ModalBody>
@@ -154,8 +162,10 @@ function App() {
         size='lg'
         onWheel={e => {e.stopPropagation()}}
       >
+        <ModalHeader toggle={toggleInfoModal}>
+          <span className='fs-3'>Usage</span>
+        </ModalHeader>
         <ModalBody>
-          <h2 className='fs-3'>Usage</h2>
           <ListGroup flush>
             <ListGroupItem>
               <h3 className='fs-5'>Create node</h3>
@@ -179,7 +189,7 @@ function App() {
             </ListGroupItem>
             <ListGroupItem>
               <h3 className='fs-5'>Delete node</h3>
-              <b>Select</b> and <b>press</b> <code>Delete</code>.
+              <b>Select</b> and <b>press</b> <code>Delete</code> key.
             </ListGroupItem>
             <ListGroupItem>
               <h3 className='fs-5'>Delete edge</h3>
@@ -188,7 +198,7 @@ function App() {
                   Link the nodes again.
                 </ListGroupItem>
                 <ListGroupItem>
-                  <b>Select</b> and <b>press</b> <code>Delete</code>.
+                  <b>Select</b> and <b>press</b> <code>Delete</code> key.
                 </ListGroupItem>
               </ListGroup>
             </ListGroupItem>
